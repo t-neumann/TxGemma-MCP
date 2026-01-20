@@ -5,12 +5,15 @@ Load, validate, and introspect TxGemma / TDC prompt templates.
 from __future__ import annotations
 
 import json
+import logging
 import re
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 from collections import defaultdict
 
 from huggingface_hub import hf_hub_download
+
+logger = logging.getLogger(__name__)
 
 # -------------------------
 # Constants & Regex
@@ -22,8 +25,7 @@ DEFAULT_FILENAME = "tdc_prompts.json"
 # Matches placeholders like:
 # {Drug SMILES}
 # {Epitope amino acid sequence}
-PLACEHOLDER_REGEX = re.compile(r"\{([^}]+)\}")
-
+PLACEHOLDER_REGEX = re.compile(r"\{([^{}]+)\}")
 
 # -------------------------
 # PromptTemplate
@@ -140,6 +142,7 @@ class PromptTemplate:
             f")"
         )
 
+
 # -------------------------
 # PromptLoader
 # -------------------------
@@ -163,25 +166,53 @@ class PromptLoader:
         self._templates: Dict[str, PromptTemplate] = {}
         self._placeholder_index: Dict[str, Set[str]] = defaultdict(set)
         self._loaded = False
+        self._source = None  # Track where prompts were loaded from
 
     # ---- Loading ----
 
     def _load_json(self) -> Dict:
         """
         Load prompts JSON from local file or Hugging Face.
+        
+        Raises:
+            FileNotFoundError: If local override doesn't exist
+            RuntimeError: If HuggingFace download fails
+            ValueError: If JSON is invalid
         """
         if self.local_override:
             if not self.local_override.exists():
-                raise FileNotFoundError(self.local_override)
+                raise FileNotFoundError(
+                    f"Local override not found: {self.local_override}"
+                )
             path = self.local_override
+            self._source = f"local file: {path}"
         else:
-            path = hf_hub_download(
-                repo_id=self.hf_repo,
-                filename=self.filename,
-            )
+            try:
+                path = hf_hub_download(
+                    repo_id=self.hf_repo,
+                    filename=self.filename,
+                )
+                self._source = f"HuggingFace: {self.hf_repo}/{self.filename}"
+            except Exception as e:
+                raise RuntimeError(
+                    f"Failed to download prompts from HuggingFace "
+                    f"({self.hf_repo}/{self.filename}): {e}"
+                ) from e
 
-        with open(path, "r") as f:
-            return json.load(f)
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except json.JSONDecodeError as e:
+            raise ValueError(
+                f"Invalid JSON in prompts file ({path}): {e}"
+            ) from e
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to read prompts file ({path}): {e}"
+            ) from e
+        
+        logger.info(f"Loaded {len(data)} prompt definitions from {self._source}")
+        return data
 
     def _build_placeholder_index(self):
         """
@@ -193,36 +224,94 @@ class PromptLoader:
                 self._placeholder_index[placeholder].add(name)
 
     def load(self):
+        """
+        Load prompts from source.
+        
+        Raises:
+            ValueError: If prompt data is malformed
+            RuntimeError: If loading fails
+        """
         if self._loaded:
             return
 
         data = self._load_json()
+        
+        # Validate top-level structure
+        if not isinstance(data, dict):
+            raise ValueError(
+                f"Prompts JSON must be a dictionary, got {type(data).__name__}"
+            )
 
+        # Parse each prompt
         for name, content in data.items():
-            if isinstance(content, str):
-                self._templates[name] = PromptTemplate(name, content)
-            elif isinstance(content, dict):
-                self._templates[name] = PromptTemplate(
-                    name=name,
-                    template=content.get("template", ""),
-                    metadata=content.get("metadata", {}),
-                )
-            else:
-                raise ValueError(f"Invalid prompt format for '{name}'")
+            try:
+                if isinstance(content, str):
+                    # Simple format: template string only
+                    self._templates[name] = PromptTemplate(name, content)
+                    
+                elif isinstance(content, dict):
+                    # Rich format: template + metadata
+                    if "template" not in content:
+                        raise ValueError(f"Prompt '{name}' missing 'template' field")
+                    
+                    self._templates[name] = PromptTemplate(
+                        name=name,
+                        template=content["template"],
+                        metadata=content.get("metadata", {}),
+                    )
+                else:
+                    raise ValueError(
+                        f"Invalid prompt format for '{name}': "
+                        f"expected str or dict, got {type(content).__name__}"
+                    )
+            except Exception as e:
+                logger.error(f"Failed to load prompt '{name}': {e}")
+                raise
 
         # Build reverse index for efficient lookup
         self._build_placeholder_index()
         
         self._loaded = True
+        logger.info(
+            f"Successfully loaded {len(self._templates)} templates with "
+            f"{len(self._placeholder_index)} unique placeholders"
+        )
+
+    def reload(self):
+        """
+        Reload prompts from source.
+        
+        Useful for development when prompts are being updated.
+        """
+        logger.info("Reloading prompts...")
+        self._loaded = False
+        self._templates.clear()
+        self._placeholder_index.clear()
+        self._source = None
+        self.load()
 
     # ---- Accessors ----
 
     def get(self, name: str) -> PromptTemplate:
-        """Get a specific template by name."""
+        """
+        Get a specific template by name.
+        
+        Raises:
+            KeyError: If template doesn't exist
+        """
         self.load()
         if name not in self._templates:
-            raise KeyError(f"Prompt '{name}' not found")
+            available = ", ".join(sorted(self._templates.keys())[:5])
+            raise KeyError(
+                f"Prompt '{name}' not found. "
+                f"Available prompts include: {available}..."
+            )
         return self._templates[name]
+
+    def has_template(self, name: str) -> bool:
+        """Check if a template exists without raising an error."""
+        self.load()
+        return name in self._templates
 
     def all(self) -> Dict[str, PromptTemplate]:
         """Get all templates."""
@@ -233,6 +322,15 @@ class PromptLoader:
         """List all template names."""
         self.load()
         return list(self._templates.keys())
+
+    def __len__(self) -> int:
+        """Return number of loaded templates."""
+        self.load()
+        return len(self._templates)
+
+    def __contains__(self, name: str) -> bool:
+        """Check if template exists (enables 'in' operator)."""
+        return self.has_template(name)
 
     # ---- Placeholder Discovery ----
 
@@ -279,7 +377,7 @@ class PromptLoader:
             for placeholder, template_names in self._placeholder_index.items()
         }
 
-    def most_common_placeholders(self, top_n: int = 10) -> List[tuple[str, int]]:
+    def most_common_placeholders(self, top_n: int = 10) -> List[Tuple[str, int]]:
         """
         Get most commonly used placeholders across templates.
         
@@ -416,12 +514,17 @@ class PromptLoader:
             if tmpl.placeholder_count() >= min_placeholders
         }
 
+    @property
+    def source(self) -> Optional[str]:
+        """Get the source where prompts were loaded from."""
+        return self._source
+
+
 # -------------------------
 # Global Loader (optional)
 # -------------------------
 
 _default_loader: Optional[PromptLoader] = None
-
 
 def get_loader() -> PromptLoader:
     """Get the global default loader instance."""
