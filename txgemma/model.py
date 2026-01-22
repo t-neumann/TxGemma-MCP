@@ -22,7 +22,7 @@ class TxGemmaModel:
     
     _instance: Optional["TxGemmaModel"] = None
     
-    def __new__(cls):
+    def __new__(cls, model_name: str = "google/txgemma-2b-predict", max_new_tokens: int = 64):
         """Singleton: only one model instance."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
@@ -139,12 +139,29 @@ class TxGemmaModel:
 _model_instance: Optional[TxGemmaModel] = None
 
 
-def get_model() -> TxGemmaModel:
+def get_model(
+    model_name: str = "google/txgemma-2b-predict",
+    max_new_tokens: int = 64
+) -> TxGemmaModel:
     """
     Get the global TxGemma model instance.
     Creates it if it doesn't exist.
+    
+    Args:
+        model_name: HuggingFace model identifier
+        max_new_tokens: Maximum tokens to generate per request
+        
+    Returns:
+        TxGemmaModel singleton instance
+        
+    Note:
+        Arguments are only used on first call. Subsequent calls return
+        the existing singleton regardless of arguments passed.
     """
     global _model_instance
     if _model_instance is None:
-        _model_instance = TxGemmaModel()
+        _model_instance = TxGemmaModel(
+            model_name=model_name,
+            max_new_tokens=max_new_tokens
+        )
     return _model_instance

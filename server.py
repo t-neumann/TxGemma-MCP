@@ -65,47 +65,23 @@ for tool in TOOLS:
     tool_description = tool.description
     tool_schema = tool.inputSchema
     
-    # Create a tool function dynamically
+    # Create a closure that captures the tool name
     def make_tool_func(name: str):
-        def tool_func(**kwargs) -> str:
-            """Execute TxGemma tool."""
+        def tool_func(params: dict) -> str:
             try:
-                result = execute_tool(name, kwargs)
+                result = execute_tool(name, params)
                 return result
             except Exception as e:
                 logger.error(f"Tool execution failed for {name}: {e}")
                 return f"ERROR: {str(e)}"
         
-        # Set proper metadata
         tool_func.__name__ = name
-        tool_func.__doc__ = tool_description
         
         return tool_func
     
-    # Register with FastMCP
-    # FastMCP will handle schema from function signature
-    tool_func = make_tool_func(tool_name)
-    
-    # Manually set annotations for proper schema generation
-    annotations = {}
-    for param_name, param_schema in tool_schema.get("properties", {}).items():
-        # Map JSON schema types to Python types
-        if param_schema["type"] == "string":
-            annotations[param_name] = str
-        elif param_schema["type"] == "integer":
-            annotations[param_name] = int
-        elif param_schema["type"] == "number":
-            annotations[param_name] = float
-        elif param_schema["type"] == "boolean":
-            annotations[param_name] = bool
-        else:
-            annotations[param_name] = str  # Default to string
-    
-    annotations["return"] = str
-    tool_func.__annotations__ = annotations
-    
     # Register the tool
-    mcp.tool()(tool_func)
+    tool_func = make_tool_func(tool_name)
+    mcp.tool(name=tool_name, description=tool_description)(tool_func)
 
 logger.info(f"Registered {len(TOOLS)} tools with FastMCP")
 
@@ -174,18 +150,11 @@ def server_stats() -> str:
 # -----------------------------------------------------------------------------
 
 def main():
-    """Main entry point supporting both MCP and API modes."""
-    import sys
-    
-    if len(sys.argv) > 1 and sys.argv[1] == "api":
-        # Run in FastAPI/SSE mode for web access
-        logger.info("Starting TxGemma MCP server in API mode (SSE)...")
-        logger.info("API docs available at: http://localhost:8000/docs")
-        mcp.run(transport="sse")
-    else:
-        # Run in MCP stdio mode (default for Claude Desktop)
-        logger.info("Starting TxGemma MCP server in MCP mode (stdio)...")
-        mcp.run(transport="stdio")
+    """Main entry point for MCP server."""
+    # FastMCP will handle transport/host/port via CLI args
+    # This is just for direct Python execution
+    logger.info("Starting TxGemma MCP server...")
+    mcp.run()
 
 
 if __name__ == "__main__":
