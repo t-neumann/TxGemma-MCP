@@ -4,12 +4,12 @@ Load, validate, and introspect TxGemma / TDC prompt templates.
 
 from __future__ import annotations
 
+import builtins
 import json
 import logging
 import re
-from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
 from collections import defaultdict
+from pathlib import Path
 
 from huggingface_hub import hf_hub_download
 
@@ -31,6 +31,7 @@ PLACEHOLDER_REGEX = re.compile(r"\{([^{}]+)\}")
 # PromptTemplate
 # -------------------------
 
+
 class PromptTemplate:
     """
     Represents a single TxGemma / TDC prompt template.
@@ -40,17 +41,17 @@ class PromptTemplate:
         self,
         name: str,
         template: str,
-        metadata: Optional[Dict] = None,
+        metadata: dict | None = None,
     ):
         self.name = name
         self.template = template
         self.metadata = metadata or {}
 
-        self.placeholders: List[str] = self._extract_placeholders()
+        self.placeholders: list[str] = self._extract_placeholders()
 
     # ---- Introspection ----
 
-    def _extract_placeholders(self) -> List[str]:
+    def _extract_placeholders(self) -> list[str]:
         """
         Extract placeholder variables from template.
 
@@ -60,7 +61,7 @@ class PromptTemplate:
         return list(dict.fromkeys(matches))
 
     @property
-    def required_inputs(self) -> Set[str]:
+    def required_inputs(self) -> set[str]:
         """Set of required input variables."""
         return set(self.placeholders)
 
@@ -83,9 +84,7 @@ class PromptTemplate:
         """
         missing = self.required_inputs - set(kwargs.keys())
         if missing:
-            raise ValueError(
-                f"Missing required placeholders for '{self.name}': {sorted(missing)}"
-            )
+            raise ValueError(f"Missing required placeholders for '{self.name}': {sorted(missing)}")
 
         return self.template.format(**kwargs)
 
@@ -104,7 +103,7 @@ class PromptTemplate:
 
         return f"TxGemma prediction task: {self.name}"
 
-    def to_metadata(self) -> Dict:
+    def to_metadata(self) -> dict:
         """
         Export structured metadata (useful for MCP tool schemas).
         """
@@ -114,7 +113,7 @@ class PromptTemplate:
             "required_inputs": sorted(self.required_inputs),
             "placeholder_count": self.placeholder_count(),
         }
-    
+
     def __str__(self) -> str:
         inputs = ", ".join(sorted(self.required_inputs)) or "none"
         desc = self.get_description()
@@ -147,6 +146,7 @@ class PromptTemplate:
 # PromptLoader
 # -------------------------
 
+
 class PromptLoader:
     """
     Load and manage TxGemma / TDC prompt templates.
@@ -157,23 +157,23 @@ class PromptLoader:
         *,
         hf_repo: str = DEFAULT_HF_REPO,
         filename: str = DEFAULT_FILENAME,
-        local_override: Optional[Path] = None,
+        local_override: Path | None = None,
     ):
         self.hf_repo = hf_repo
         self.filename = filename
         self.local_override = local_override
 
-        self._templates: Dict[str, PromptTemplate] = {}
-        self._placeholder_index: Dict[str, Set[str]] = defaultdict(set)
+        self._templates: dict[str, PromptTemplate] = {}
+        self._placeholder_index: dict[str, set[str]] = defaultdict(set)
         self._loaded = False
         self._source = None  # Track where prompts were loaded from
 
     # ---- Loading ----
 
-    def _load_json(self) -> Dict:
+    def _load_json(self) -> dict:
         """
         Load prompts JSON from local file or Hugging Face.
-        
+
         Raises:
             FileNotFoundError: If local override doesn't exist
             RuntimeError: If HuggingFace download fails
@@ -181,9 +181,7 @@ class PromptLoader:
         """
         if self.local_override:
             if not self.local_override.exists():
-                raise FileNotFoundError(
-                    f"Local override not found: {self.local_override}"
-                )
+                raise FileNotFoundError(f"Local override not found: {self.local_override}")
             path = self.local_override
             self._source = f"local file: {path}"
         else:
@@ -200,17 +198,13 @@ class PromptLoader:
                 ) from e
 
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 data = json.load(f)
         except json.JSONDecodeError as e:
-            raise ValueError(
-                f"Invalid JSON in prompts file ({path}): {e}"
-            ) from e
+            raise ValueError(f"Invalid JSON in prompts file ({path}): {e}") from e
         except Exception as e:
-            raise RuntimeError(
-                f"Failed to read prompts file ({path}): {e}"
-            ) from e
-        
+            raise RuntimeError(f"Failed to read prompts file ({path}): {e}") from e
+
         logger.info(f"Loaded {len(data)} prompt definitions from {self._source}")
         return data
 
@@ -226,7 +220,7 @@ class PromptLoader:
     def load(self):
         """
         Load prompts from source.
-        
+
         Raises:
             ValueError: If prompt data is malformed
             RuntimeError: If loading fails
@@ -235,12 +229,10 @@ class PromptLoader:
             return
 
         data = self._load_json()
-        
+
         # Validate top-level structure
         if not isinstance(data, dict):
-            raise ValueError(
-                f"Prompts JSON must be a dictionary, got {type(data).__name__}"
-            )
+            raise ValueError(f"Prompts JSON must be a dictionary, got {type(data).__name__}")
 
         # Parse each prompt
         for name, content in data.items():
@@ -248,12 +240,12 @@ class PromptLoader:
                 if isinstance(content, str):
                     # Simple format: template string only
                     self._templates[name] = PromptTemplate(name, content)
-                    
+
                 elif isinstance(content, dict):
                     # Rich format: template + metadata
                     if "template" not in content:
                         raise ValueError(f"Prompt '{name}' missing 'template' field")
-                    
+
                     self._templates[name] = PromptTemplate(
                         name=name,
                         template=content["template"],
@@ -270,7 +262,7 @@ class PromptLoader:
 
         # Build reverse index for efficient lookup
         self._build_placeholder_index()
-        
+
         self._loaded = True
         logger.info(
             f"Successfully loaded {len(self._templates)} templates with "
@@ -280,7 +272,7 @@ class PromptLoader:
     def reload(self):
         """
         Reload prompts from source.
-        
+
         Useful for development when prompts are being updated.
         """
         logger.info("Reloading prompts...")
@@ -295,17 +287,14 @@ class PromptLoader:
     def get(self, name: str) -> PromptTemplate:
         """
         Get a specific template by name.
-        
+
         Raises:
             KeyError: If template doesn't exist
         """
         self.load()
         if name not in self._templates:
             available = ", ".join(sorted(self._templates.keys())[:5])
-            raise KeyError(
-                f"Prompt '{name}' not found. "
-                f"Available prompts include: {available}..."
-            )
+            raise KeyError(f"Prompt '{name}' not found. Available prompts include: {available}...")
         return self._templates[name]
 
     def has_template(self, name: str) -> bool:
@@ -313,12 +302,12 @@ class PromptLoader:
         self.load()
         return name in self._templates
 
-    def all(self) -> Dict[str, PromptTemplate]:
+    def all(self) -> dict[str, PromptTemplate]:
         """Get all templates."""
         self.load()
         return dict(self._templates)
 
-    def list(self) -> List[str]:
+    def list(self) -> builtins.list[str]:
         """List all template names."""
         self.load()
         return list(self._templates.keys())
@@ -334,25 +323,25 @@ class PromptLoader:
 
     # ---- Placeholder Discovery ----
 
-    def all_placeholders(self) -> Set[str]:
+    def all_placeholders(self) -> set[str]:
         """
         Get set of ALL placeholders used across all templates.
-        
+
         Useful for understanding the input vocabulary.
         """
         self.load()
         return set(self._placeholder_index.keys())
 
-    def placeholder_usage(self, placeholder: str) -> Set[str]:
+    def placeholder_usage(self, placeholder: str) -> set[str]:
         """
         Get set of template names that use a specific placeholder.
-        
+
         Args:
             placeholder: Placeholder name (e.g., "Drug SMILES")
-            
+
         Returns:
             Set of template names that require this placeholder
-            
+
         Example:
             >>> loader.placeholder_usage("Drug SMILES")
             {'predict_toxicity', 'predict_bbb_permeability', ...}
@@ -360,13 +349,13 @@ class PromptLoader:
         self.load()
         return self._placeholder_index.get(placeholder, set()).copy()
 
-    def placeholder_stats(self) -> Dict[str, int]:
+    def placeholder_stats(self) -> dict[str, int]:
         """
         Get usage statistics for all placeholders.
-        
+
         Returns:
             Dict mapping placeholder -> count of templates using it
-            
+
         Example:
             >>> loader.placeholder_stats()
             {'Drug SMILES': 15, 'Target sequence': 3, ...}
@@ -377,13 +366,13 @@ class PromptLoader:
             for placeholder, template_names in self._placeholder_index.items()
         }
 
-    def most_common_placeholders(self, top_n: int = 10) -> List[Tuple[str, int]]:
+    def most_common_placeholders(self, top_n: int = 10) -> builtins.list[tuple[str, int]]:
         """
         Get most commonly used placeholders across templates.
-        
+
         Args:
             top_n: Number of top placeholders to return
-            
+
         Returns:
             List of (placeholder, usage_count) tuples, sorted by count descending
         """
@@ -393,36 +382,30 @@ class PromptLoader:
     # ---- Filtering by Placeholder ----
 
     def filter_by_placeholder(
-        self, 
-        placeholder: str,
-        *,
-        exact: bool = True
-    ) -> Dict[str, PromptTemplate]:
+        self, placeholder: str, *, exact: bool = True
+    ) -> dict[str, PromptTemplate]:
         """
         Return templates that use a specific placeholder.
-        
+
         Args:
             placeholder: Placeholder to filter by (e.g., "Drug SMILES")
             exact: If True, match exactly. If False, match case-insensitive substring
-            
+
         Returns:
             Dict of template_name -> PromptTemplate
-            
+
         Example:
             >>> loader.filter_by_placeholder("Drug SMILES")
             {'predict_toxicity': <PromptTemplate>, ...}
-            
+
             >>> loader.filter_by_placeholder("smiles", exact=False)
             # Returns all templates with any placeholder containing "smiles"
         """
         self.load()
-        
+
         if exact:
             template_names = self._placeholder_index.get(placeholder, set())
-            return {
-                name: self._templates[name]
-                for name in template_names
-            }
+            return {name: self._templates[name] for name in template_names}
         else:
             # Fuzzy match - case insensitive substring search
             placeholder_lower = placeholder.lower()
@@ -435,22 +418,19 @@ class PromptLoader:
             return result
 
     def filter_by_placeholders(
-        self,
-        placeholders: List[str],
-        *,
-        match_all: bool = True
-    ) -> Dict[str, PromptTemplate]:
+        self, placeholders: builtins.list[str], *, match_all: bool = True
+    ) -> dict[str, PromptTemplate]:
         """
         Filter templates by multiple placeholders.
-        
+
         Args:
             placeholders: List of placeholder names
             match_all: If True, template must use ALL placeholders.
                       If False, template must use ANY of the placeholders.
-                      
+
         Returns:
             Dict of matching templates
-            
+
         Example:
             >>> loader.filter_by_placeholders(
             ...     ["Drug SMILES", "Target sequence"],
@@ -459,7 +439,7 @@ class PromptLoader:
             # Returns only templates that use BOTH placeholders
         """
         self.load()
-        
+
         if match_all:
             # Template must have ALL placeholders
             result = {}
@@ -477,19 +457,19 @@ class PromptLoader:
 
     # ---- Convenience Filters (for common use cases) ----
 
-    def smiles_prompts(self) -> Dict[str, PromptTemplate]:
+    def smiles_prompts(self) -> dict[str, PromptTemplate]:
         """Convenience: Get all templates that use Drug SMILES."""
         return self.filter_by_placeholder("Drug SMILES")
 
-    def sequence_prompts(self) -> Dict[str, PromptTemplate]:
+    def sequence_prompts(self) -> dict[str, PromptTemplate]:
         """Convenience: Get all templates that use protein/target sequences."""
         # Fuzzy match for any sequence-related placeholder
         return self.filter_by_placeholder("sequence", exact=False)
 
-    def simple_prompts(self, max_placeholders: int = 1) -> Dict[str, PromptTemplate]:
+    def simple_prompts(self, max_placeholders: int = 1) -> dict[str, PromptTemplate]:
         """
         Get templates with few placeholders (simpler to use).
-        
+
         Args:
             max_placeholders: Maximum number of placeholders
         """
@@ -500,10 +480,10 @@ class PromptLoader:
             if tmpl.placeholder_count() <= max_placeholders
         }
 
-    def complex_prompts(self, min_placeholders: int = 3) -> Dict[str, PromptTemplate]:
+    def complex_prompts(self, min_placeholders: int = 3) -> dict[str, PromptTemplate]:
         """
         Get templates with many placeholders (more complex inputs).
-        
+
         Args:
             min_placeholders: Minimum number of placeholders
         """
@@ -515,7 +495,7 @@ class PromptLoader:
         }
 
     @property
-    def source(self) -> Optional[str]:
+    def source(self) -> str | None:
         """Get the source where prompts were loaded from."""
         return self._source
 
@@ -524,7 +504,8 @@ class PromptLoader:
 # Global Loader (optional)
 # -------------------------
 
-_default_loader: Optional[PromptLoader] = None
+_default_loader: PromptLoader | None = None
+
 
 def get_loader() -> PromptLoader:
     """Get the global default loader instance."""

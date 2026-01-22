@@ -4,10 +4,10 @@ TxGemma MCP package.
 Provides Model Context Protocol tools for TxGemma therapeutic AI models.
 """
 
-from txgemma.model import TxGemmaModel, get_model
 from txgemma.executor import execute_tool, execute_tool_async
+from txgemma.model import TxGemmaModel, get_model
+from txgemma.prompts import PromptLoader, PromptTemplate, get_loader
 from txgemma.tool_factory import build_tools
-from txgemma.prompts import PromptTemplate, PromptLoader, get_loader
 
 __version__ = "0.1.0"
 

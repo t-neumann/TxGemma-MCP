@@ -7,17 +7,15 @@ Uses FastMCP for dual stdio/SSE support.
 """
 
 import logging
-from typing import Any, Dict
 
 from fastmcp import FastMCP
 
-from txgemma.tool_factory import build_tools
 from txgemma.executor import execute_tool
+from txgemma.tool_factory import build_tools
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -64,21 +62,21 @@ for tool in TOOLS:
     tool_name = tool.name
     tool_description = tool.description
     tool_schema = tool.inputSchema
-    
+
     # Create a closure that captures the tool name
     def make_tool_func(name: str):
-        def tool_func(params: dict) -> str:
+        def _tool_func(params: dict) -> str:
             try:
                 result = execute_tool(name, params)
                 return result
             except Exception as e:
                 logger.error(f"Tool execution failed for {name}: {e}")
                 return f"ERROR: {str(e)}"
-        
-        tool_func.__name__ = name
-        
-        return tool_func
-    
+
+        _tool_func.__name__ = name
+
+        return _tool_func
+
     # Register the tool
     tool_func = make_tool_func(tool_name)
     mcp.tool(name=tool_name, description=tool_description)(tool_func)
@@ -90,15 +88,14 @@ logger.info(f"Registered {len(TOOLS)} tools with FastMCP")
 # Resources
 # -----------------------------------------------------------------------------
 
+
 @mcp.resource("txgemma://info")
 def server_info() -> str:
     """Information about the TxGemma MCP server and available models."""
-    from txgemma.prompts import get_loader
     from txgemma.tool_factory import analyze_tools
-    
-    loader = get_loader()
+
     stats = analyze_tools()
-    
+
     info = f"""
 TxGemma MCP Server
 ==================
@@ -108,8 +105,8 @@ development and drug discovery tasks.
 
 Server Configuration:
 - Tools loaded: {len(TOOLS)}
-- Total available tools: {stats['total_tools']}
-- Unique placeholders: {stats['total_placeholders']}
+- Total available tools: {stats["total_tools"]}
+- Unique placeholders: {stats["total_placeholders"]}
 
 Available Models:
 - TxGemma 2B (default - fastest, good for basic predictions)
@@ -120,14 +117,14 @@ Model Types:
 - Predict: Optimized for property predictions (current)
 - Chat: Conversational, can explain predictions
 
-Current Tools: {', '.join([t.name for t in TOOLS[:5]])}{'...' if len(TOOLS) > 5 else ''}
+Current Tools: {", ".join([t.name for t in TOOLS[:5]])}{"..." if len(TOOLS) > 5 else ""}
 
 Most Common Placeholders:
 """
-    
-    for placeholder, count in stats['most_common_placeholders'][:5]:
+
+    for placeholder, count in stats["most_common_placeholders"][:5]:
         info += f"- {placeholder}: {count} tools\n"
-    
+
     info += """
 For more information, visit:
 https://developers.google.com/health-ai-developer-foundations/txgemma
@@ -138,9 +135,10 @@ https://developers.google.com/health-ai-developer-foundations/txgemma
 @mcp.resource("txgemma://stats")
 def server_stats() -> str:
     """Detailed statistics about available tools."""
-    from txgemma.tool_factory import analyze_tools
     import json
-    
+
+    from txgemma.tool_factory import analyze_tools
+
     stats = analyze_tools()
     return json.dumps(stats, indent=2)
 
@@ -148,6 +146,7 @@ def server_stats() -> str:
 # -----------------------------------------------------------------------------
 # Entry point
 # -----------------------------------------------------------------------------
+
 
 def main():
     """Main entry point for MCP server."""
