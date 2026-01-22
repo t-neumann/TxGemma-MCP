@@ -1,0 +1,137 @@
+name: CI Tests
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # Fast tests - no GPU required
+  test:
+    name: Unit Tests (No GPU)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      
+      - name: Install uv
+        run: pip install uv
+      
+      - name: Install dependencies
+        run: uv sync --all-extras
+      
+      - name: Run unit tests (skip GPU)
+        run: |
+          mkdir -p test-results
+          uv run pytest -m "not gpu" \
+            -o log_cli=true --log-cli-level=INFO \
+            --junitxml=test-results/unit-tests-py${{ matrix.python-version }}.xml \
+            --cov=txgemma --cov-report=xml --cov-report=term \
+            | tee test-results/unit-py${{ matrix.python-version }}.log
+      
+      - name: Upload unit test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results-py${{ matrix.python-version }}
+          path: test-results/
+      
+      - name: Upload coverage to Codecov
+        if: matrix.python-version == '3.11' && secrets.CODECOV_TOKEN != ''
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          flags: unit-tests
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  # Linting
+  lint:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      
+      - name: Install uv
+        run: pip install uv
+      
+      - name: Install dependencies
+        run: uv sync --all-extras
+      
+      - name: Run ruff linter
+        run: uv run ruff check .
+      
+      - name: Run ruff formatter
+        run: uv run ruff format --check .
+
+  # GPU tests - only on self-hosted EC2 runner
+  # To enable: Set repository variable ENABLE_GPU_TESTS=true in GitHub Settings
+  # Settings → Secrets and variables → Actions → Variables → New repository variable
+  gpu-tests:
+    name: GPU Tests (EC2)
+    runs-on: [self-hosted, gpu, linux]
+    needs: test
+    if: |
+      (github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main') &&
+      vars.ENABLE_GPU_TESTS == 'true'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Clean workspace
+        run: git clean -ffdx
+      
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      
+      - name: Install dependencies
+        run: uv sync --all-extras
+      
+      - name: Run GPU tests
+        run: |
+          mkdir -p test-results
+          uv run pytest --run-gpu \
+            -o log_cli=true --log-cli-level=INFO \
+            --junitxml=test-results/gpu-tests.xml \
+            --cov=txgemma --cov-report=xml --cov-report=term \
+            | tee test-results/gpu.log
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      
+      - name: Upload GPU test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gpu-test-results
+          path: test-results/
+      
+      - name: Upload GPU coverage
+        if: secrets.CODECOV_TOKEN != ''
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          flags: gpu-tests
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

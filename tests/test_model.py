@@ -64,7 +64,6 @@ class TestTxGemmaModelUnit:
         assert not model.is_loaded
 
 
-@pytest.mark.slow
 class TestTxGemmaModelIntegration:
     """Integration tests that require model download and GPU."""
     
@@ -156,7 +155,6 @@ Answer:"""
         model.unload()
 
 
-@pytest.mark.slow
 class TestTxGemmaModelEdgeCases:
     """Test edge cases and error handling."""
     
