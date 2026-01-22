@@ -22,8 +22,6 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "gpu: marks tests as requiring GPU (deselect with '-m \"not gpu\"')"
     )
-    config.addinivalue_line("markers", "integration: marks tests as integration tests")
-    config.addinivalue_line("markers", "unit: marks tests as unit tests")
 
 
 def pytest_collection_modifyitems(config, items):

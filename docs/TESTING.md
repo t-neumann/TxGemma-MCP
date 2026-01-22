@@ -90,9 +90,8 @@ uv run pytest --cov=txgemma
 Tests use pytest markers to indicate requirements:
 
 - `@pytest.mark.gpu` - Requires GPU hardware (CUDA or MPS)
-- `@pytest.mark.unit` - Fast unit test
 
-**Note**: Use `@pytest.mark.gpu` for any test requiring model loading.
+**Note**: Use `@pytest.mark.gpu` for any test requiring model loading. All other tests run by default and are automatically skipped when using --run-gpu is not provided.
 
 ## Where to Run GPU Tests
 
@@ -212,7 +211,6 @@ Defined in `conftest.py`:
 [pytest]
 markers =
     gpu: marks tests as requiring GPU
-    unit: marks tests as unit tests
 
 asyncio_mode = auto
 ```
