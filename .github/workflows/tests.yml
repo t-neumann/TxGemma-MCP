@@ -49,7 +49,8 @@ jobs:
           path: test-results/
       
       - name: Upload coverage to Codecov
-        if: matrix.python-version == '3.11' && secrets.CODECOV_TOKEN != ''
+        if: matrix.python-version == '3.11'
+        continue-on-error: true  # Don't fail if Codecov token not set
         uses: codecov/codecov-action@v4
         with:
           file: ./coverage.xml
@@ -128,7 +129,7 @@ jobs:
           path: test-results/
       
       - name: Upload GPU coverage
-        if: secrets.CODECOV_TOKEN != ''
+        continue-on-error: true  # Don't fail if Codecov token not set
         uses: codecov/codecov-action@v4
         with:
           file: ./coverage.xml
