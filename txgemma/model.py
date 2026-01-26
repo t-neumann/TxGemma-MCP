@@ -23,6 +23,8 @@ class TxGemmaPredictModel:
 
     Used for property predictions from TDC prompts.
     Optimized for fast, deterministic, short-form outputs.
+
+    Configuration loaded from config.yaml by default.
     """
 
     _instance: Optional["TxGemmaPredictModel"] = None
@@ -35,26 +37,53 @@ class TxGemmaPredictModel:
 
     def __init__(
         self,
-        model_name: str = "google/txgemma-2b-predict",
-        max_new_tokens: int = 64,
+        model_name: str | None = None,
+        max_new_tokens: int | None = None,
     ):
         """
         Initialize prediction model configuration.
 
+        Priority (highest to lowest):
+        1. Explicitly passed arguments
+        2. Config file values
+        3. Hardcoded defaults
+
         Args:
-            model_name: HuggingFace model ID
-            max_new_tokens: Max tokens for predictions
+            model_name: HuggingFace model ID (overrides config if provided)
+            max_new_tokens: Max tokens for predictions (overrides config if provided)
         """
         if self._initialized:
             return
 
-        config = get_config()
+        # Load config (may fail if config.yaml doesn't exist)
+        try:
+            config = get_config()
+            config_model = config.predict.model
+            config_max_tokens = config.predict.max_new_tokens
+        except Exception as e:
+            logger.warning(f"Could not load config, using defaults: {e}")
+            config_model = None
+            config_max_tokens = None
 
-        self.model_name = model_name or config.predict.model
-        self.max_new_tokens = max_new_tokens or config.predict.max_new_tokens
+        # Priority: argument → config → hardcoded default
+        self.model_name = (
+            model_name
+            if model_name is not None
+            else (config_model if config_model is not None else "google/txgemma-2b-predict")
+        )
+        self.max_new_tokens = (
+            max_new_tokens
+            if max_new_tokens is not None
+            else (config_max_tokens if config_max_tokens is not None else 64)
+        )
+
         self.tokenizer: AutoTokenizer | None = None
         self.model: AutoModelForCausalLM | None = None
         self._initialized = True
+
+        logger.info(
+            f"TxGemmaPredictModel configured: {self.model_name}, max_tokens: {self.max_new_tokens}"
+        )
 
     @property
     def is_loaded(self) -> bool:
@@ -103,7 +132,7 @@ class TxGemmaPredictModel:
         outputs = self.model.generate(
             **inputs,
             max_new_tokens=max_tokens,
-            do_sample=False,  # Deterministic
+            do_sample=False,
         )
 
         generated_ids = outputs[0][len(inputs["input_ids"][0]) :]
@@ -128,6 +157,8 @@ class TxGemmaChatModel:
 
     Used for conversational Q&A and explanations.
     Optimized for detailed, explanatory responses.
+
+    Configuration loaded from config.yaml by default.
     """
 
     _instance: Optional["TxGemmaChatModel"] = None
@@ -140,26 +171,53 @@ class TxGemmaChatModel:
 
     def __init__(
         self,
-        model_name: str = "google/txgemma-9b-chat",
-        max_new_tokens: int = 200,
+        model_name: str | None = None,
+        max_new_tokens: int | None = None,
     ):
         """
         Initialize chat model configuration.
 
+        Priority (highest to lowest):
+        1. Explicitly passed arguments
+        2. Config file values
+        3. Hardcoded defaults
+
         Args:
-            model_name: HuggingFace model ID
-            max_new_tokens: Max tokens for chat responses
+            model_name: HuggingFace model ID (overrides config if provided)
+            max_new_tokens: Max tokens for chat responses (overrides config if provided)
         """
         if self._initialized:
             return
 
-        config = get_config()
+        # Load config (may fail if config.yaml doesn't exist)
+        try:
+            config = get_config()
+            config_model = config.chat.model
+            config_max_tokens = config.chat.max_new_tokens
+        except Exception as e:
+            logger.warning(f"Could not load config, using defaults: {e}")
+            config_model = None
+            config_max_tokens = None
 
-        self.model_name = model_name or config.chat.model
-        self.max_new_tokens = max_new_tokens or config.chat.max_new_tokens
+        # Priority: argument → config → hardcoded default
+        self.model_name = (
+            model_name
+            if model_name is not None
+            else (config_model if config_model is not None else "google/txgemma-9b-chat")
+        )
+        self.max_new_tokens = (
+            max_new_tokens
+            if max_new_tokens is not None
+            else (config_max_tokens if config_max_tokens is not None else 200)
+        )
+
         self.tokenizer: AutoTokenizer | None = None
         self.model: AutoModelForCausalLM | None = None
         self._initialized = True
+
+        logger.info(
+            f"TxGemmaChatModel configured: {self.model_name}, max_tokens: {self.max_new_tokens}"
+        )
 
     @property
     def is_loaded(self) -> bool:

@@ -8,10 +8,12 @@ Tests are organized by GPU requirements:
 tests/
 ├── conftest.py           # Pytest configuration (--run-gpu flag)
 ├── test_prompts.py       # ✅ Fast, no GPU (60+ tests)
-├── test_tool_factory.py  # ✅ Fast, no GPU
-├── test_executor.py      # ✅ Fast, mocked model
-├── test_server.py        # ✅ Fast, no GPU (unit tests)
-└── test_model.py         # ⚠️  Requires GPU (~5GB download)
+├── test_tool_factory.py  # ✅ Fast, no GPU (31 tests)
+├── test_config.py        # ✅ Fast, no GPU (32 tests)
+├── test_chat_factory.py  # ✅ Fast, mocked model (10+ tests)
+├── test_executor.py      # ✅ Fast, mocked model (15+ tests)
+├── test_server.py        # ✅ Fast, no GPU (26 tests)
+└── test_model.py         # ⚠️  Requires GPU (~8-36GB download)
 ```
 
 ## Running Tests
@@ -28,14 +30,14 @@ uv run pytest
 uv run pytest --cov=txgemma --cov-report=html
 
 # Specific test file
-uv run pytest tests/test_prompts.py -v
+uv run pytest tests/test_config.py -v
 
 # Specific test
-uv run pytest tests/test_prompts.py::TestPromptLoader::test_load_from_local_simple_format -v
+uv run pytest tests/test_config.py::TestConfigModels::test_predict_config_defaults -v
 ```
 
-**Expected time**: ~5-10 seconds  
-**Coverage**: ~80%+ of non-model code
+**Expected time**: ~10-15 seconds  
+**Coverage**: ~85%+ of non-model code
 
 ### GPU Tests (Requires GPU + Model Download)
 
@@ -53,9 +55,11 @@ uv run pytest tests/test_model.py --run-gpu -v
 ```
 
 **Expected time**: 
-- First run: ~5-10 minutes (model download from HuggingFace)
-- Subsequent runs: ~30-60 seconds (cached model)
+- First run: ~5-15 minutes (model download from HuggingFace - depends on config)
+- Subsequent runs: ~30-90 seconds (cached models)
 - Apple Silicon (M1/M2/M3): Fast! Uses Metal Performance Shaders
+
+**Note**: GPU tests will load models based on your `config.yaml` or default configuration. Development config (2b + 9b) downloads ~22GB.
 
 ### Selective Test Running
 
@@ -67,7 +71,10 @@ uv run pytest -m "not gpu"
 uv run pytest -m gpu --run-gpu
 
 # Run specific test class
-uv run pytest tests/test_model.py::TestTxGemmaModelIntegration --run-gpu
+uv run pytest tests/test_model.py::TestTxGemmaPredictModel --run-gpu
+
+# Run configuration tests
+uv run pytest tests/test_config.py -v
 
 # Show test output (disable capture)
 uv run pytest -v -s --run-gpu
@@ -91,7 +98,7 @@ Tests use pytest markers to indicate requirements:
 
 - `@pytest.mark.gpu` - Requires GPU hardware (CUDA or MPS)
 
-**Note**: Use `@pytest.mark.gpu` for any test requiring model loading. All other tests run by default and are automatically skipped when using --run-gpu is not provided.
+**Note**: Use `@pytest.mark.gpu` for any test requiring model loading. All other tests run by default and are automatically skipped when --run-gpu is not provided.
 
 ## Where to Run GPU Tests
 
@@ -109,7 +116,7 @@ uv run pytest --run-gpu
 
 **Requirements**:
 - Apple Silicon Mac (M1/M2/M3)
-- 16GB+ RAM recommended
+- 32GB+ RAM recommended (for dual model tests)
 - Automatic GPU via Metal (no setup needed!)
 
 ### Option 2: Local Development with NVIDIA GPU
@@ -124,7 +131,7 @@ uv run pytest --run-gpu
 ```
 
 **Requirements**:
-- CUDA GPU with 8GB+ VRAM (for 2B model)
+- CUDA GPU with 24GB+ VRAM (for default dev config: 2b + 9b)
 - CUDA 12.1+ and cuDNN installed
 
 ### Option 3: GitHub Actions with Self-Hosted EC2 Runner
@@ -162,40 +169,113 @@ uv run pytest -m "not gpu" --cov=txgemma
 
 ## Test Strategy
 
-### Fast Tests (Always Run) - ~100 tests
+### Fast Tests (Always Run) - ~170+ tests
 
-✅ **test_prompts.py** - Prompt template system
+✅ **test_config.py** (32 tests) - Configuration system
+- Config loading from YAML
+- Environment variable overrides
+- Pydantic validation
+- Singleton behavior
+- No model required
+
+✅ **test_prompts.py** (60+ tests) - Prompt template system
 - Loading from local files and HuggingFace
 - Template formatting and validation
 - Placeholder discovery and filtering
+- Config integration
 - No model required
 
-✅ **test_tool_factory.py** - MCP tool generation
+✅ **test_tool_factory.py** (31 tests) - MCP tool generation
 - Schema generation from TDC prompts
 - Tool filtering and introspection
 - Metadata handling
+- Config integration
 - No model required
 
-✅ **test_executor.py** - Execution logic
+✅ **test_executor.py** (15+ tests) - Execution logic
 - Mock the model for fast tests
-- Test error handling
+- Test error handling for both predict and chat
 - Test prompt formatting
 - No model required
 
-✅ **test_server.py** - Server initialization
+✅ **test_chat_factory.py** (10+ tests) - Chat tool registration
+- Chat tool registration with FastMCP
+- Error handling
+- Config integration (enable_chat)
+- No model required
+
+✅ **test_server.py** (26 tests) - Server initialization
 - FastMCP setup
 - Tool registration
+- Config integration
 - Resource endpoints
 - Mocked components
 
-### GPU Tests (Run on GPU Hardware) - ~15 tests
+### GPU Tests (Run on GPU Hardware) - ~20+ tests
 
 ⚠️ **test_model.py** - Model loading and generation
-- Model initialization and singleton pattern
+- Both predict and chat models
+- Model initialization from config
+- Singleton pattern
 - Loading/unloading on GPU
-- Text generation with real model
+- Text generation with real models
 - Edge cases and error handling
-- Requires GPU + 5GB model download
+- Requires GPU + model downloads (size depends on config)
+
+## New Test Coverage (v0.1.0)
+
+### Configuration System (test_config.py)
+
+```python
+# Test config models
+def test_predict_config_defaults()
+def test_chat_config_defaults()
+def test_prompts_config_defaults()
+def test_tools_config_defaults()
+
+# Test loading
+def test_load_config_from_yaml()
+def test_load_config_with_nested_prompts()
+def test_load_config_file_not_exists()
+
+# Test environment overrides
+def test_env_override_predict_model()
+def test_env_override_chat_model()
+def test_env_override_chat_max_tokens()
+def test_env_override_filter_placeholder()
+def test_multiple_env_overrides()
+
+# Test use cases
+def test_development_config()
+def test_production_config()
+def test_research_config()
+```
+
+### Chat System (test_chat_factory.py)
+
+```python
+# Test chat tool registration
+def test_register_chat_tool()
+def test_chat_tool_schema()
+def test_chat_execution()
+def test_chat_error_handling()
+def test_enable_chat_config()
+```
+
+### Dual Model System (test_model.py - Updated)
+
+```python
+# Predict model tests
+def test_predict_model_singleton()
+def test_predict_model_config_integration()
+def test_predict_generate()
+
+# Chat model tests (NEW)
+def test_chat_model_singleton()
+def test_chat_model_config_integration()
+def test_chat_generate()
+def test_chat_template_handling()
+```
 
 ## Test Configuration
 
@@ -215,6 +295,19 @@ markers =
 asyncio_mode = auto
 ```
 
+### Environment Variables for Testing
+
+```bash
+# Override config during tests
+export TXGEMMA_PREDICT_MODEL=google/txgemma-2b-predict
+export TXGEMMA_CHAT_MODEL=google/txgemma-9b-chat
+export TXGEMMA_CHAT_MAX_TOKENS=100
+export TXGEMMA_FILTER_PLACEHOLDER="Drug SMILES"
+
+# Run tests with custom config
+uv run pytest --run-gpu
+```
+
 ## Coverage
 
 ### Generate Coverage Report
@@ -232,9 +325,21 @@ open htmlcov/index.html
 
 ### Coverage Goals
 
-- **Fast tests**: Should cover 80%+ of non-model code
+- **Fast tests**: Should cover 85%+ of non-model code
 - **GPU tests**: Should cover model and generation paths
 - **Combined**: Aim for 90%+ total coverage
+
+### Coverage by Module
+
+| Module | Fast Tests | GPU Tests | Total |
+|--------|-----------|-----------|-------|
+| config.py | 100% | - | 100% |
+| prompts.py | 95% | - | 95% |
+| tool_factory.py | 95% | - | 95% |
+| chat_factory.py | 90% | - | 90% |
+| executor.py | 85% | 5% | 90% |
+| server.py | 90% | - | 90% |
+| model.py | 30% | 65% | 95% |
 
 ## Debugging Tests
 
@@ -262,6 +367,9 @@ uv run pytest --log-cli-level=INFO
 
 # Show debug logs
 uv run pytest --log-cli-level=DEBUG
+
+# See config loading messages
+uv run pytest tests/test_config.py --log-cli-level=INFO -v
 ```
 
 ### Debug with PDB
@@ -271,17 +379,17 @@ uv run pytest --log-cli-level=DEBUG
 uv run pytest --pdb
 
 # Drop into debugger on specific test
-uv run pytest tests/test_prompts.py::test_name --pdb
+uv run pytest tests/test_config.py::TestConfigModels::test_predict_config_defaults --pdb
 ```
 
 ### Run Single Test
 
 ```bash
 # Run one test function
-uv run pytest tests/test_prompts.py::TestPromptLoader::test_load_from_local_simple_format -v
+uv run pytest tests/test_config.py::TestEnvironmentVariableOverrides::test_env_override_predict_model -v
 
 # Run one test class
-uv run pytest tests/test_model.py::TestTxGemmaModelIntegration --run-gpu -v
+uv run pytest tests/test_model.py::TestTxGemmaPredictModel --run-gpu -v
 ```
 
 ## Continuous Integration (GitHub Actions)
@@ -563,7 +671,7 @@ sudo ./svc.sh uninstall
 uv run pytest -m "not gpu" -vv
 
 # Check specific failing test
-uv run pytest tests/test_prompts.py::TestPromptLoader::test_load_from_local_simple_format -vv
+uv run pytest tests/test_config.py::TestConfigModels::test_predict_config_defaults -vv
 ```
 
 #### Linting Fails
@@ -613,6 +721,19 @@ sudo ./svc.sh restart
 uv run huggingface-cli whoami --token YOUR_TOKEN
 ```
 
+#### Config Not Loading in Tests
+
+```bash
+# Check config.yaml exists
+ls -la config.yaml
+
+# Verify environment variables
+echo $TXGEMMA_PREDICT_MODEL
+
+# Run with debug logging
+uv run pytest tests/test_config.py --log-cli-level=DEBUG -v
+```
+
 ### CI/CD Best Practices
 
 #### For Contributors (No GPU Access)
@@ -636,7 +757,7 @@ git push origin your-branch
 
 ```bash
 # 1. Before merging to main
-uv run pytest --run-gpu  # Run locally on Mac
+uv run pytest --run-gpu  # Run locally
 
 # 2. Merge to main
 git checkout main
@@ -674,22 +795,31 @@ open htmlcov/index.html
 
 | Test Suite | Count | Time (No GPU) | Time (With GPU) |
 |------------|-------|---------------|-----------------|
+| test_config.py | 32 | ~2s | ~2s |
 | test_prompts.py | 60+ | ~3s | ~3s |
-| test_tool_factory.py | 20+ | ~2s | ~2s |
-| test_executor.py | 10+ | ~1s | ~1s |
-| test_server.py | 10+ | ~2s | ~2s |
-| **Fast Total** | **~100** | **~8s** | **~8s** |
-| test_model.py | 15 | skipped | ~5min (first) / ~30s (cached) |
-| **All Tests** | **~115** | **~8s** | **~5min (first) / ~38s (cached)** |
+| test_tool_factory.py | 31 | ~2s | ~2s |
+| test_chat_factory.py | 10+ | ~1s | ~1s |
+| test_executor.py | 15+ | ~2s | ~2s |
+| test_server.py | 26 | ~2s | ~2s |
+| **Fast Total** | **~175** | **~12s** | **~12s** |
+| test_model.py | 20+ | skipped | ~5-15min (first) / ~60-90s (cached) |
+| **All Tests** | **~195** | **~12s** | **~5-15min (first) / ~72-102s (cached)** |
+
+**Note**: GPU test time depends on config:
+- Development (2b + 9b): ~5min first / ~60s cached
+- Production (9b + 9b): ~10min first / ~75s cached
+- Research (27b + 27b): ~15min first / ~90s cached
 
 ### Hardware Performance
 
-| Platform | GPU | First Run | Cached Run |
-|----------|-----|-----------|------------|
-| Apple M1 Pro | MPS (Metal) | ~3min | ~20s |
-| Apple M2 Max | MPS (Metal) | ~2.5min | ~18s |
-| AWS g5.xlarge | A10G (24GB) | ~5min | ~30s |
-| Local NVIDIA RTX 3090 | CUDA (24GB) | ~4min | ~25s |
+| Platform | GPU | Config | First Run | Cached Run |
+|----------|-----|--------|-----------|------------|
+| Apple M1 Pro | MPS (Metal) | Dev (2b+9b) | ~3min | ~30s |
+| Apple M2 Max | MPS (Metal) | Dev (2b+9b) | ~2.5min | ~25s |
+| Apple M3 Max | MPS (Metal) | Prod (9b+9b) | ~5min | ~40s |
+| AWS g5.xlarge | A10G (24GB) | Dev (2b+9b) | ~5min | ~60s |
+| Local NVIDIA RTX 3090 | CUDA (24GB) | Dev (2b+9b) | ~4min | ~45s |
+| AWS g5.2xlarge | A10G (32GB) | Prod (9b+9b) | ~8min | ~75s |
 
 ## Summary
 
@@ -697,17 +827,37 @@ open htmlcov/index.html
 
 | Command | Use Case | Time | GPU Required |
 |---------|----------|------|--------------|
-| `uv run pytest` | Fast tests (default) | ~8s | ❌ |
-| `uv run pytest --run-gpu` | All tests with GPU | ~5min / ~30s | ✅ |
-| `uv run pytest -m "not gpu"` | Explicitly skip GPU | ~8s | ❌ |
-| `uv run pytest -m gpu --run-gpu` | Only GPU tests | ~5min / ~30s | ✅ |
+| `uv run pytest` | Fast tests (default) | ~12s | ❌ |
+| `uv run pytest --run-gpu` | All tests with GPU | ~5-15min / ~60-90s | ✅ |
+| `uv run pytest -m "not gpu"` | Explicitly skip GPU | ~12s | ❌ |
+| `uv run pytest -m gpu --run-gpu` | Only GPU tests | ~5-15min / ~60-90s | ✅ |
+| `uv run pytest tests/test_config.py` | Config tests only | ~2s | ❌ |
 
 ### Test Distribution
 
-- **~100 tests**: No GPU required (prompts, tools, executor, server)
-- **~15 tests**: GPU required (model loading and generation)
-- **Total**: ~115 tests
+- **~175 tests**: No GPU required (config, prompts, tools, executor, chat, server)
+- **~20 tests**: GPU required (dual model loading and generation)
+- **Total**: ~195 tests
 - **Coverage**: 90%+ with all tests
+
+### New in This Version
+
+✅ **Configuration Testing** (32 tests)
+- YAML loading and validation
+- Environment variable overrides
+- Preset configurations
+- Singleton behavior
+
+✅ **Dual Model Support** (20+ tests)
+- Predict model (TDC tasks)
+- Chat model (explanations)
+- Config integration
+- Both models tested on GPU
+
+✅ **Chat Tool Testing** (10+ tests)
+- Registration and execution
+- Error handling
+- Config integration
 
 ### CI/CD Summary
 
@@ -723,16 +873,17 @@ open htmlcov/index.html
 4. (Optional) Add `CODECOV_TOKEN` for coverage tracking
 
 **Current configuration:**
-- Fast tests: Always run (8-10 seconds)
-- GPU tests: Optional (30-60 seconds when enabled)
+- Fast tests: Always run (12-15 seconds)
+- GPU tests: Optional (60-90 seconds when enabled, after initial download)
 - Linting: Always run (2-3 seconds)
 
 ### Development Cycle
 
 1. **Write code** → Run `uv run pytest` (fast tests)
-2. **Before commit** → Run `uv run pytest -m "not gpu" --cov=txgemma`
-3. **Push to PR** → CI runs fast tests automatically
-4. **Merge to main** → CI runs GPU tests on EC2 (if enabled)
+2. **Test config changes** → Run `uv run pytest tests/test_config.py`
+3. **Before commit** → Run `uv run pytest -m "not gpu" --cov=txgemma`
+4. **Push to PR** → CI runs fast tests automatically
+5. **Merge to main** → CI runs GPU tests on EC2 (if enabled)
 
 ---
 
@@ -740,3 +891,4 @@ open htmlcov/index.html
 - Check `conftest.py` for test configuration
 - Run `pytest --markers` to see all available markers
 - See `.github/workflows/tests.yml` for CI/CD details
+- Check `config.yaml` for model configuration used in tests
