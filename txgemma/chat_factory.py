@@ -38,30 +38,30 @@ Examples:
         "properties": {
             "question": {
                 "type": "string",
-                "description": "Your question about drug discovery, molecular properties, or therapeutic development"
+                "description": "Your question about drug discovery, molecular properties, or therapeutic development",
             }
         },
-        "required": ["question"]
-    }
+        "required": ["question"],
+    },
 }
 
 
 def register_chat_tool(mcp):
     """
     Register the chat tool with FastMCP server.
-    
+
     Args:
         mcp: FastMCP instance
     """
     enhanced_description = CHAT_TOOL["description"]
-    
+
     def _chat_tool_func(params: dict) -> str:
         """
         Execute TxGemma chat model.
-        
+
         Args:
             params: Dictionary containing 'question' key
-        
+
         Returns:
             Conversational response from chat model
         """
@@ -69,18 +69,15 @@ def register_chat_tool(mcp):
             question = params.get("question")
             if not question:
                 return "ERROR: Missing required parameter 'question'"
-            
+
             return execute_chat(question)
         except Exception as e:
             logger.error(f"Chat tool execution failed: {e}")
             return f"ERROR: {str(e)}"
-    
+
     _chat_tool_func.__name__ = CHAT_TOOL["name"]
-    
+
     # Register with FastMCP
-    mcp.tool(
-        name=CHAT_TOOL["name"],
-        description=enhanced_description
-    )(_chat_tool_func)
-    
+    mcp.tool(name=CHAT_TOOL["name"], description=enhanced_description)(_chat_tool_func)
+
     logger.info("Registered txgemma_chat tool")

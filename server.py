@@ -7,18 +7,16 @@ Uses FastMCP for dual stdio/SSE support.
 """
 
 import logging
-from typing import Any, Dict
 
 from fastmcp import FastMCP
 
-from txgemma.tool_factory import build_tools
 from txgemma.chat_factory import register_chat_tool
 from txgemma.executor import execute_tool
+from txgemma.tool_factory import build_tools
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -36,7 +34,7 @@ logger.info("Loading TxGemma chat tool...")
 # Register chat tool
 register_chat_tool(mcp)
 
-logger.info(f"Registered TxGemma chat tool with FastMCP")
+logger.info("Registered TxGemma chat tool with FastMCP")
 
 # Load tools once at startup (before model is loaded)
 # Tools are auto-generated from TDC prompts downloaded from HuggingFace
@@ -73,7 +71,7 @@ for tool in TOOLS:
     tool_name = tool.name
     tool_description = tool.description
     tool_schema = tool.inputSchema
-    
+
     # Enhance description with parameter information for agents
     # This helps agents understand what parameters to provide
     enhanced_description = tool_description
@@ -84,18 +82,20 @@ for tool in TOOLS:
             param_type = param_info.get("type", "string")
             is_required = param_name in tool_schema.get("required", [])
             required_marker = " (required)" if is_required else " (optional)"
-            enhanced_description += f"\n- {param_name}{required_marker}: {param_desc} (type: {param_type})"
-    
+            enhanced_description += (
+                f"\n- {param_name}{required_marker}: {param_desc} (type: {param_type})"
+            )
+
     # Create a closure that captures the tool name
     def make_tool_func(name: str):
         def _tool_func(params: dict) -> str:
             """
             Execute a TxGemma tool with the provided parameters.
-            
+
             Args:
                 params: Dictionary of parameter name -> value mappings.
                         Parameter names may contain spaces (e.g., "Drug SMILES").
-            
+
             Returns:
                 Prediction result from the TxGemma model.
             """
@@ -105,11 +105,11 @@ for tool in TOOLS:
             except Exception as e:
                 logger.error(f"Tool execution failed for {name}: {e}")
                 return f"ERROR: {str(e)}"
-        
+
         _tool_func.__name__ = name
-        
+
         return _tool_func
-    
+
     # Register the tool
     tool_func = make_tool_func(tool_name)
     mcp.tool(name=tool_name, description=enhanced_description)(tool_func)
@@ -121,13 +121,14 @@ logger.info(f"Registered {len(TOOLS)} tools with FastMCP")
 # Resources
 # -----------------------------------------------------------------------------
 
+
 @mcp.resource("txgemma://info")
 def server_info() -> str:
     """Information about the TxGemma MCP server and available models."""
     from txgemma.tool_factory import analyze_tools
-    
+
     stats = analyze_tools()
-    
+
     info = f"""
 TxGemma MCP Server
 ==================
@@ -137,8 +138,8 @@ development and drug discovery tasks.
 
 Server Configuration:
 - Tools loaded: {len(TOOLS)}
-- Total available tools: {stats['total_tools']}
-- Unique placeholders: {stats['total_placeholders']}
+- Total available tools: {stats["total_tools"]}
+- Unique placeholders: {stats["total_placeholders"]}
 
 Available Models:
 - TxGemma 2B (default - fastest, good for basic predictions)
@@ -149,14 +150,14 @@ Model Types:
 - Predict: Optimized for property predictions (current)
 - Chat: Conversational, can explain predictions
 
-Current Tools: {', '.join([t.name for t in TOOLS[:5]])}{'...' if len(TOOLS) > 5 else ''}
+Current Tools: {", ".join([t.name for t in TOOLS[:5]])}{"..." if len(TOOLS) > 5 else ""}
 
 Most Common Placeholders:
 """
-    
-    for placeholder, count in stats['most_common_placeholders'][:5]:
+
+    for placeholder, count in stats["most_common_placeholders"][:5]:
         info += f"- {placeholder}: {count} tools\n"
-    
+
     info += """
 For more information, visit:
 https://developers.google.com/health-ai-developer-foundations/txgemma
@@ -167,9 +168,10 @@ https://developers.google.com/health-ai-developer-foundations/txgemma
 @mcp.resource("txgemma://stats")
 def server_stats() -> str:
     """Detailed statistics about available tools."""
-    from txgemma.tool_factory import analyze_tools
     import json
-    
+
+    from txgemma.tool_factory import analyze_tools
+
     stats = analyze_tools()
     return json.dumps(stats, indent=2)
 
@@ -177,6 +179,7 @@ def server_stats() -> str:
 # -----------------------------------------------------------------------------
 # Entry point
 # -----------------------------------------------------------------------------
+
 
 def main():
     """Main entry point for MCP server."""
