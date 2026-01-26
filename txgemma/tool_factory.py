@@ -12,11 +12,9 @@ from txgemma.prompts import PromptTemplate, get_loader
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
 # -------------------------
 # Placeholder Metadata
 # -------------------------
-
 
 def get_placeholder_type(placeholder: str) -> str:
     """

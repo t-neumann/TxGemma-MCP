@@ -79,11 +79,14 @@ def execute_chat(question: str) -> str:
 
     try:
         chat_model = get_chat_model()
+        logger.info(f"Chat model loaded, is_loaded: {chat_model.is_loaded}")
+
         response = chat_model.generate(question)
+
         logger.info(f"Chat response generated (length: {len(response)})")
         return response
     except Exception as e:
-        logger.error(f"Chat execution failed: {e}")
+        logger.error(f"Chat execution failed: {e}", exc_info=True)  # Added exc_info for traceback
         raise RuntimeError(f"Chat model error: {e}") from e
 
 

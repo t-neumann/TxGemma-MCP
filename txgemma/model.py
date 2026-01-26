@@ -70,7 +70,7 @@ class TxGemmaPredictModel:
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,
                 device_map="auto",
-                torch_dtype=torch.float16,
+                dtype=torch.float16,
             )
             logger.info("Predict model loaded successfully")
         except Exception as e:
@@ -173,7 +173,7 @@ class TxGemmaChatModel:
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,
                 device_map="auto",
-                torch_dtype=torch.float16,
+                dtype=torch.float16,
             )
             logger.info("Chat model loaded successfully")
         except Exception as e:
@@ -200,16 +200,23 @@ class TxGemmaChatModel:
         messages = [{"role": "user", "content": prompt}]
 
         # Apply chat template
-        inputs = self.tokenizer.apply_chat_template(
+        result = self.tokenizer.apply_chat_template(
             messages, tokenize=True, add_generation_prompt=True, return_tensors="pt"
-        ).to(self.model.device)
+        )
+
+        # CRITICAL: Extract tensor if result is BatchEncoding or dict-like
+        if hasattr(result, "input_ids"):
+            # It's a BatchEncoding object
+            inputs = result.input_ids.to(self.model.device)
+        elif isinstance(result, dict) and "input_ids" in result:
+            # It's a dict
+            inputs = result["input_ids"].to(self.model.device)
+        else:
+            # It's already a tensor
+            inputs = result.to(self.model.device)
 
         # Generate response
-        outputs = self.model.generate(
-            input_ids=inputs,
-            max_new_tokens=max_tokens,
-            do_sample=False,
-        )
+        outputs = self.model.generate(input_ids=inputs, max_new_tokens=max_tokens)
 
         # Decode response only
         response = self.tokenizer.decode(outputs[0, len(inputs[0]) :], skip_special_tokens=True)
@@ -236,9 +243,3 @@ def get_predict_model() -> TxGemmaPredictModel:
 def get_chat_model() -> TxGemmaChatModel:
     """Get the singleton TxGemmaChatModel instance."""
     return TxGemmaChatModel()
-
-
-# Legacy compatibility - can be removed later
-def get_model() -> TxGemmaPredictModel:
-    """Get the prediction model (for backward compatibility)."""
-    return get_predict_model()
