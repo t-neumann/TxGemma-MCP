@@ -71,7 +71,7 @@ class TestTxGemmaChatModelUnit:
         model = TxGemmaChatModel()
 
         assert model.model_name == "google/txgemma-9b-chat"
-        assert model.max_new_tokens == 200
+        assert model.max_new_tokens == 100
         assert not model.is_loaded
         assert model.tokenizer is None
         assert model.model is None
