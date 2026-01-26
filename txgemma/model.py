@@ -12,6 +12,8 @@ from typing import Optional
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
+from txgemma.config import get_config
+
 logger = logging.getLogger(__name__)
 
 
@@ -46,8 +48,10 @@ class TxGemmaPredictModel:
         if self._initialized:
             return
 
-        self.model_name = model_name
-        self.max_new_tokens = max_new_tokens
+        config = get_config()
+
+        self.model_name = model_name or config.predict.model
+        self.max_new_tokens = max_new_tokens or config.predict.max_new_tokens
         self.tokenizer: AutoTokenizer | None = None
         self.model: AutoModelForCausalLM | None = None
         self._initialized = True
@@ -149,8 +153,10 @@ class TxGemmaChatModel:
         if self._initialized:
             return
 
-        self.model_name = model_name
-        self.max_new_tokens = max_new_tokens
+        config = get_config()
+
+        self.model_name = model_name or config.chat.model
+        self.max_new_tokens = max_new_tokens or config.chat.max_new_tokens
         self.tokenizer: AutoTokenizer | None = None
         self.model: AutoModelForCausalLM | None = None
         self._initialized = True

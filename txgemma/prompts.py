@@ -508,8 +508,36 @@ _default_loader: PromptLoader | None = None
 
 
 def get_loader() -> PromptLoader:
-    """Get the global default loader instance."""
+    """
+    Get the global default loader instance.
+
+    Configuration loaded from config.yaml.
+    HuggingFace repo automatically derived from predict.model.
+    """
     global _default_loader
     if _default_loader is None:
-        _default_loader = PromptLoader()
+        try:
+            # Try to load from config
+            from txgemma.config import get_config
+
+            config = get_config()
+
+            prompts_config = config.tools.prompts
+
+            # Check if using local override
+            if prompts_config.local_override:
+                local_path = Path(prompts_config.local_override)
+                _default_loader = PromptLoader(local_override=local_path)
+                logger.info(f"Prompts loaded from local file: {local_path}")
+            else:
+                # Use HuggingFace - derive repo from predict model
+                hf_repo = config.predict.model
+                _default_loader = PromptLoader(hf_repo=hf_repo, filename=prompts_config.filename)
+                logger.info(f"Prompts loaded from HuggingFace: {hf_repo}/{prompts_config.filename}")
+        except Exception as e:
+            # Fallback to defaults if config not available
+            logger.warning(f"Could not load prompts config, using defaults: {e}")
+            _default_loader = PromptLoader()
+            logger.info(f"Prompts loaded from default: {DEFAULT_HF_REPO}/{DEFAULT_FILENAME}")
+
     return _default_loader

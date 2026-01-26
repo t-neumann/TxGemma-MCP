@@ -11,6 +11,7 @@ import logging
 from fastmcp import FastMCP
 
 from txgemma.chat_factory import register_chat_tool
+from txgemma.config import get_config
 from txgemma.executor import execute_tool
 from txgemma.tool_factory import build_tools
 
@@ -21,6 +22,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
+# Load config
+# -----------------------------------------------------------------------------
+
+logger.info("Loading TxGemma configuration...")
+
+config = get_config()
+
+# -----------------------------------------------------------------------------
 # Server initialization
 # -----------------------------------------------------------------------------
 
@@ -28,13 +37,16 @@ mcp = FastMCP(
     "txgemma-mcp",
 )
 
-# Load chat tool once at startup (before model is loaded)
-logger.info("Loading TxGemma chat tool...")
+if config.tools.enable_chat:
+    # Load chat tool once at startup (before model is loaded)
+    logger.info("Loading TxGemma chat tool...")
 
-# Register chat tool
-register_chat_tool(mcp)
+    # Register chat tool
+    register_chat_tool(mcp)
 
-logger.info("Registered TxGemma chat tool with FastMCP")
+    logger.info("Registered TxGemma chat tool with FastMCP")
+else:
+    logger.info("Chat tool disabled in config")
 
 # Load tools once at startup (before model is loaded)
 # Tools are auto-generated from TDC prompts downloaded from HuggingFace
@@ -44,7 +56,11 @@ logger.info("Loading TxGemma tools from TDC definitions...")
 # ===================================================
 
 # Option 1: Load ALL tools (default - maximum flexibility)
-TOOLS = build_tools()
+TOOLS = build_tools(
+    filter_placeholder=config.tools.filter_placeholder,
+    max_placeholders=config.tools.max_placeholders,
+)
+logger.info(f"Loaded {len(TOOLS)} tools")
 
 # Option 2: Load only Drug SMILES tools (uncomment to use)
 # TOOLS = build_tools(filter_placeholder="Drug SMILES")
@@ -115,7 +131,6 @@ for tool in TOOLS:
     mcp.tool(name=tool_name, description=enhanced_description)(tool_func)
 
 logger.info(f"Registered {len(TOOLS)} tools with FastMCP")
-
 
 # -----------------------------------------------------------------------------
 # Resources

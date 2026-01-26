@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 # Placeholder Metadata
 # -------------------------
 
+
 def get_placeholder_type(placeholder: str) -> str:
     """
     Infer JSON schema type for a placeholder.

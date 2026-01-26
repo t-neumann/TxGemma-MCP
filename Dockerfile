@@ -13,6 +13,7 @@ WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY server.py ./
 COPY txgemma ./txgemma
+COPY config.yaml ./
 
 # Install uv and dependencies
 RUN apt-get update && apt-get install -y \

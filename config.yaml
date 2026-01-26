@@ -1,0 +1,72 @@
+# TxGemma MCP Server Configuration
+# ==================================
+
+# Model Configuration
+# -------------------
+predict:
+  model: "google/txgemma-2b-predict"
+  max_new_tokens: 64
+
+chat:
+  model: "google/txgemma-9b-chat"
+  max_new_tokens: 100
+
+# Tool Configuration
+# ------------------
+tools:
+  # Prompts source
+  # Note: HuggingFace repo is automatically derived from predict.model
+  # e.g., predict.model = "google/txgemma-2b-predict" 
+  #   → downloads prompts from that same repo
+  prompts:
+    filename: "tdc_prompts.json"
+    # local_override: "/path/to/local/prompts.json"  # Uncomment to use local file
+  
+  # Filter which tools to load
+  # "Drug SMILES" = 677 drug tools (recommended, fast)
+  # null = all 703 tools (slow)
+  filter_placeholder: "Drug SMILES"
+  
+  # Optional: limit tool complexity
+  # max_placeholders: 2  # Only tools with ≤2 inputs
+  
+  # Enable chat tool
+  enable_chat: true
+
+
+# ============================================================================
+# PRESETS (Copy one of these to replace sections above)
+# ============================================================================
+#
+# DEVELOPMENT (Fast, 22GB VRAM):
+# -------------------------------
+# predict:
+#   model: "google/txgemma-2b-predict"
+#   max_new_tokens: 64
+# chat:
+#   model: "google/txgemma-9b-chat"
+#   max_new_tokens: 100
+# tools:
+#   filter_placeholder: "Drug SMILES"
+#
+# PRODUCTION (Balanced, 36GB VRAM):
+# ----------------------------------
+# predict:
+#   model: "google/txgemma-9b-predict"
+#   max_new_tokens: 64
+# chat:
+#   model: "google/txgemma-9b-chat"
+#   max_new_tokens: 200
+# tools:
+#   filter_placeholder: "Drug SMILES"
+#
+# RESEARCH (All tools, 54GB+ VRAM):
+# ----------------------------------
+# predict:
+#   model: "google/txgemma-27b-predict"
+#   max_new_tokens: 64
+# chat:
+#   model: "google/txgemma-27b-chat"
+#   max_new_tokens: 500
+# tools:
+#   filter_placeholder: null  # All tools
