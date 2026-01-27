@@ -33,9 +33,7 @@ config = get_config()
 # Server initialization
 # -----------------------------------------------------------------------------
 
-mcp = FastMCP(
-    "txgemma-mcp",
-)
+mcp = FastMCP("TxGemma-MCP", version="0.1.0")
 
 if config.tools.enable_chat:
     # Load chat tool once at startup (before model is loaded)

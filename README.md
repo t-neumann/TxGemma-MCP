@@ -1,10 +1,25 @@
 # 🧬 TxGemma-MCP
 
+<div align="center">
+
 [![CI Tests](https://github.com/t-neumann/TxGemma-MCP/actions/workflows/tests.yml/badge.svg)](https://github.com/t-neumann/TxGemma-MCP/actions/workflows/tests.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://hub.docker.com/r/tobneu/txgemma-mcp)
+[![MCP](https://img.shields.io/badge/MCP-compatible-green.svg)](https://modelcontextprotocol.io)
 
 **TxGemma-MCP** is a Model Context Protocol (MCP) server exposing Google DeepMind's TxGemma therapeutic AI models for agentic drug discovery workflows.
 
-TxGemma is a family of open language models fine-tuned from Gemma 2, specifically designed for therapeutic property prediction across molecules, proteins, and clinical outcomes.
+[Features](#-features) •
+[Installation](#-installation) •
+[Configuration](#️-configuration) •
+[Docker](#-docker-deployment) •
+[Documentation](#-documentation) •
+[Contributing](#-contributing)
+
+</div>
 
 ---
 
@@ -567,12 +582,6 @@ export TXGEMMA_FILTER_PLACEHOLDER=null
 
 ---
 
-## 📄 License
-
-MIT License - see LICENSE file for details
-
----
-
 ## 🙏 Acknowledgments
 
 * **Google DeepMind** for TxGemma models
@@ -581,7 +590,13 @@ MIT License - see LICENSE file for details
 * **FastMCP** project for MCP server framework
 
 ---
+## 📄 License
 
-**Author**: Tobias Neumann  
-**Repository**: https://github.com/t-neumann/TxGemma-MCP  
-**Version**: 0.1.0
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+<p align="center">
+  <strong>Author:</strong> Tobias Neumann<br>
+  <strong>Version:</strong> 0.1.0
+</p>
