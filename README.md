@@ -16,8 +16,8 @@
 [Installation](#-installation) •
 [Configuration](#️-configuration) •
 [Docker](#-docker-deployment) •
-[Documentation](#-documentation) •
-[Contributing](#-contributing)
+[Contributing](#-Development) •
+[Architecture](#-Architecture)
 
 </div>
 
