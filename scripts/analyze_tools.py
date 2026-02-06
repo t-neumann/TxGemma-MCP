@@ -18,6 +18,12 @@ Usage:
     # Show simple tools only
     python scripts/analyze_tools.py --simple
 
+    # Exclude ToxCast tools
+    python scripts/analyze_tools.py --exclude "^ToxCast"
+
+    # Combine filters
+    python scripts/analyze_tools.py --placeholder "Drug SMILES" --exclude "^ToxCast" --simple
+
     # Show tools using multiple placeholders (ALL)
     python scripts/analyze_tools.py --placeholders "Drug SMILES" "Target sequence"
 
@@ -114,6 +120,15 @@ Examples:
   # Show simple tools (≤2 parameters)
   %(prog)s --simple
   
+  # Exclude ToxCast tools
+  %(prog)s --exclude "^ToxCast"
+  
+  # Drug SMILES tools, excluding ToxCast
+  %(prog)s --placeholder "Drug SMILES" --exclude "^ToxCast"
+  
+  # Simple Drug SMILES tools, no ToxCast
+  %(prog)s --placeholder "Drug SMILES" --simple --exclude "^ToxCast"
+  
   # Show drug-target interaction tools
   %(prog)s --placeholders "Drug SMILES" "Target sequence"
   
@@ -155,6 +170,12 @@ Examples:
     )
 
     parser.add_argument(
+        "--exclude",
+        type=str,
+        help="Exclude tools matching this regex pattern (e.g., '^ToxCast' to exclude ToxCast tools)",
+    )
+
+    parser.add_argument(
         "--list-placeholders",
         action="store_true",
         help="List all available placeholders with usage counts",
@@ -174,7 +195,10 @@ Examples:
     if args.verbose:
         import logging
 
-        logging.basicConfig(level=logging.INFO)
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        import logging
+        logging.basicConfig(level=logging.WARNING)  # Suppress INFO logs unless verbose
 
     loader = get_loader()
 
@@ -192,13 +216,12 @@ Examples:
 
     # List placeholders
     if args.list_placeholders:
-        print_section("Available Placeholders")
-
         stats = loader.placeholder_stats()
 
         if args.json:
             print(json.dumps(stats, indent=2))
         else:
+            print_section("Available Placeholders")
             total_placeholders = len(stats)
             print(
                 f"Found {total_placeholders} unique placeholder{'s' if total_placeholders != 1 else ''}\n"
@@ -219,31 +242,54 @@ Examples:
         return
 
     # Build tools with filters
+    filter_desc_parts = []
+    
     if args.placeholder:
-        tools = build_tools(filter_placeholder=args.placeholder, exact_match=not args.fuzzy)
         match_type = "fuzzy" if args.fuzzy else "exact"
-        filter_desc = f"using '{args.placeholder}' ({match_type} match)"
+        filter_desc_parts.append(f"using '{args.placeholder}' ({match_type} match)")
 
-    elif args.placeholders:
-        tools = build_tools(
-            filter_placeholders=args.placeholders,
-            match_all=not args.any,
-        )
+    if args.placeholders:
         match_type = "ANY" if args.any else "ALL"
-        filter_desc = f"using {match_type} of: {', '.join(args.placeholders)}"
+        filter_desc_parts.append(f"using {match_type} of: {', '.join(args.placeholders)}")
 
-    elif args.simple:
-        tools = build_tools(max_placeholders=2)
-        filter_desc = "simple (≤2 placeholders)"
+    if args.simple:
+        filter_desc_parts.append("simple (≤2 placeholders)")
 
-    elif args.complex:
-        tools = build_tools()
+    if args.complex:
+        filter_desc_parts.append("complex (≥3 placeholders)")
+    
+    if args.exclude:
+        filter_desc_parts.append(f"excluding pattern '{args.exclude}'")
+
+    filter_desc = ", ".join(filter_desc_parts) if filter_desc_parts else "all"
+
+    # Build tools with appropriate filters
+    build_kwargs = {}
+    
+    if args.placeholder:
+        build_kwargs["filter_placeholder"] = args.placeholder
+        build_kwargs["exact_match"] = not args.fuzzy
+    
+    if args.placeholders:
+        build_kwargs["filter_placeholders"] = args.placeholders
+        build_kwargs["match_all"] = not args.any
+    
+    if args.simple:
+        build_kwargs["max_placeholders"] = 2
+    
+    if args.exclude:
+        build_kwargs["exclude_name_pattern"] = args.exclude
+
+    # Build the tools
+    try:
+        tools = build_tools(**build_kwargs)
+    except ValueError as e:
+        print(f"\nError: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    # Apply complex filter after building (for compatibility)
+    if args.complex:
         tools = [t for t in tools if len(t.inputSchema["required"]) >= 3]
-        filter_desc = "complex (≥3 placeholders)"
-
-    else:
-        tools = build_tools()
-        filter_desc = "all"
 
     # Output results
     if args.json:
@@ -286,7 +332,8 @@ Examples:
         print_section("Tool Statistics")
         stats = analyze_tools()
 
-        print(f"  Total tools:              {stats['total_tools']}")
+        print(f"  Total tools available:    {stats['total_tools']}")
+        print(f"  Tools after filtering:    {len(tools)}")
         print(f"  Unique placeholders:      {stats['total_placeholders']}")
         print(f"  Simple tools (≤2 params): {stats['simple_tools']}")
         print(f"  Complex tools (>2 params): {stats['complex_tools']}")

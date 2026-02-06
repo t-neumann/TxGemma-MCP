@@ -57,6 +57,7 @@ logger.info("Loading TxGemma tools from TDC definitions...")
 TOOLS = build_tools(
     filter_placeholder=config.tools.filter_placeholder,
     max_placeholders=config.tools.max_placeholders,
+    exclude_name_pattern=config.tools.exclude_name_pattern,
 )
 logger.info(f"Loaded {len(TOOLS)} tools")
 

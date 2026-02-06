@@ -7,6 +7,7 @@ Loads settings from config.yaml with environment variable overrides.
 import logging
 import os
 from pathlib import Path
+from typing import Optional
 
 import yaml
 from pydantic import BaseModel, Field
@@ -41,6 +42,7 @@ class ToolsConfig(BaseModel):
     prompts: PromptsConfig = Field(default_factory=PromptsConfig)
     filter_placeholder: str | None = Field(default="Drug SMILES")
     max_placeholders: int | None = Field(default=None)
+    exclude_name_pattern: Optional[str] = Field(default=None)
     enable_chat: bool = Field(default=True)
 
 

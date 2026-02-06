@@ -50,6 +50,13 @@ tools = build_tools(filter_placeholder="Drug SMILES")
 # Returns only tools that use Drug SMILES input
 ```
 
+### Exclude Tools by Name Pattern
+
+```python
+tools = build_tools(exclude_name_pattern="^ToxCast")
+# Excludes all tools whose name starts with "ToxCast"
+```
+
 ### Load Drug-Target Interaction Tools
 
 ```python
@@ -58,6 +65,17 @@ tools = build_tools(
     match_all=True
 )
 # Returns only tools that use BOTH Drug SMILES AND Target sequence
+```
+
+### Combine Multiple Filters
+
+```python
+tools = build_tools(
+    filter_placeholder="Drug SMILES",
+    max_placeholders=1,
+    exclude_name_pattern="^ToxCast"
+)
+# Returns simple Drug SMILES tools, excluding ToxCast tools
 ```
 
 ### Load Simple Tools
@@ -141,6 +159,78 @@ complex_tools = [
 ]
 ```
 
+### 4. By Name Pattern
+
+Exclude tools by regex pattern matching their names.
+
+**Exclude by Prefix:**
+```python
+tools = build_tools(exclude_name_pattern="^ToxCast")
+# Excludes all tools starting with "ToxCast"
+# Example: ToxCast_AR_predict, ToxCast_ER_predict, etc.
+```
+
+**Exclude by Substring:**
+```python
+tools = build_tools(exclude_name_pattern="ToxCast")
+# Excludes any tool with "ToxCast" anywhere in name
+```
+
+**Exclude Multiple Patterns:**
+```python
+tools = build_tools(exclude_name_pattern="^(ToxCast|Tox21)")
+# Excludes tools starting with "ToxCast" OR "Tox21"
+```
+
+**Case-Insensitive Exclusion:**
+```python
+tools = build_tools(exclude_name_pattern="(?i)toxcast")
+# Excludes tools with "toxcast" in any case
+```
+
+**Complex Pattern Examples:**
+```python
+# Exclude all toxicity-related tools
+tools = build_tools(exclude_name_pattern="(?i)(tox|toxic)")
+
+# Exclude specific tool families
+tools = build_tools(exclude_name_pattern="^(ToxCast|Tox21|AMES)")
+
+# Exclude by suffix
+tools = build_tools(exclude_name_pattern="_legacy$")
+```
+
+### 5. Combining Filters
+
+All filters can be combined for precise tool selection:
+
+```python
+# Drug SMILES tools, simple only, no ToxCast
+tools = build_tools(
+    filter_placeholder="Drug SMILES",
+    max_placeholders=1,
+    exclude_name_pattern="^ToxCast"
+)
+
+# Drug tools, excluding both ToxCast and Tox21
+tools = build_tools(
+    filter_placeholder="Drug SMILES",
+    exclude_name_pattern="^(ToxCast|Tox21)"
+)
+
+# Simple tools, excluding experimental ones
+tools = build_tools(
+    max_placeholders=2,
+    exclude_name_pattern="(?i)(experimental|beta|alpha)"
+)
+```
+
+**Filter Order:**
+Filters are applied in this order:
+1. `exclude_name_pattern` - Name-based exclusion (first)
+2. `filter_placeholder` - Placeholder filtering
+3. `max_placeholders` - Complexity filtering
+
 ---
 
 ## CLI Tool Usage
@@ -215,42 +305,38 @@ Found 15 tools
 python scripts/analyze_tools.py --placeholder "Drug SMILES"
 ```
 
-**Output:**
-```
-======================================================================
-  Tools (using 'Drug SMILES' (exact match))
-======================================================================
-
-Found 12 tools
-
-  📦 predict_toxicity
-     Predict toxicity of a drug molecule
-     Parameters (1): Drug SMILES
-  
-  ...
-```
-
-#### Fuzzy Search for Placeholders
-
+**Fuzzy matching (case-insensitive substring):**
 ```bash
 python scripts/analyze_tools.py --placeholder "smiles" --fuzzy
 ```
 
-**Output:**
+#### Show Tools Using Multiple Placeholders
+
+**Match ALL placeholders (default):**
+```bash
+python scripts/analyze_tools.py --placeholders "Drug SMILES" "Target sequence"
 ```
-======================================================================
-  Tools (using 'smiles' (fuzzy match))
-======================================================================
 
-Found 15 tools
+**Match ANY placeholder:**
+```bash
+python scripts/analyze_tools.py --placeholders "Drug SMILES" "Protein sequence" --any
+```
 
-  📦 predict_toxicity
-     Parameters (1): Drug SMILES
+#### Exclude Tools by Name Pattern
 
-  📦 retrosynthesis
-     Parameters (1): Product SMILES
-  
-  ...
+**Exclude all ToxCast tools:**
+```bash
+python scripts/analyze_tools.py --exclude "^ToxCast"
+```
+
+**Exclude multiple tool families:**
+```bash
+python scripts/analyze_tools.py --exclude "^(ToxCast|Tox21)"
+```
+
+**Case-insensitive exclusion:**
+```bash
+python scripts/analyze_tools.py --exclude "(?i)experimental"
 ```
 
 #### Show Simple Tools Only
@@ -259,43 +345,44 @@ Found 15 tools
 python scripts/analyze_tools.py --simple
 ```
 
-**Output:**
-```
-======================================================================
-  Tools (simple (≤2 placeholders))
-======================================================================
-
-Found 10 tools
-
-  📦 predict_toxicity
-     Parameters (1): Drug SMILES
-  
-  ...
-```
-
 #### Show Complex Tools Only
 
 ```bash
 python scripts/analyze_tools.py --complex
 ```
 
-#### Show Tools with Multiple Placeholders (ALL)
+#### Combine Multiple Filters
 
+**Drug SMILES tools, simple only, no ToxCast:**
 ```bash
-python scripts/analyze_tools.py \
-    --placeholders "Drug SMILES" "Target sequence"
+python scripts/analyze_tools.py --placeholder "Drug SMILES" --simple --exclude "^ToxCast"
 ```
 
-**Finds tools that use BOTH placeholders.**
-
-#### Show Tools with Multiple Placeholders (ANY)
-
+**Fuzzy search with exclusion:**
 ```bash
-python scripts/analyze_tools.py \
-    --placeholders "Drug SMILES" "Protein sequence" --any
+python scripts/analyze_tools.py --placeholder "smiles" --fuzzy --exclude "^ToxCast"
 ```
 
-**Finds tools that use AT LEAST ONE of the placeholders.**
+### Output Format Commands
+
+#### JSON Output
+
+```bash
+python scripts/analyze_tools.py --json
+```
+
+**Export to file:**
+```bash
+python scripts/analyze_tools.py --placeholder "Drug SMILES" --json > tools.json
+```
+
+#### Verbose Output
+
+```bash
+python scripts/analyze_tools.py --verbose
+```
+
+Shows detailed parameter information for each tool.
 
 ### Detailed Tool Information
 
@@ -357,24 +444,6 @@ python scripts/analyze_tools.py --source
 python scripts/analyze_tools.py --json
 ```
 
-**Output:**
-```json
-[
-  {
-    "name": "predict_toxicity",
-    "description": "Predict toxicity...",
-    "parameters": ["Drug SMILES"],
-    "parameter_count": 1,
-    "properties": {
-      "Drug SMILES": {
-        "type": "string",
-        "description": "SMILES string representation..."
-      }
-    }
-  }
-]
-```
-
 **Save to file:**
 ```bash
 python scripts/analyze_tools.py --json > tools.json
@@ -387,14 +456,7 @@ python scripts/analyze_tools.py --placeholder "Drug SMILES" --json > drug_tools.
 python scripts/analyze_tools.py --simple --verbose
 ```
 
-**Shows detailed parameter information:**
-```
-  📦 predict_toxicity
-     Predict toxicity of a drug molecule
-     Parameters (1): Drug SMILES
-     Details:
-       - Drug SMILES (string): SMILES string representation of the drug molecule
-```
+---
 
 ### Common CLI Patterns
 
@@ -425,9 +487,7 @@ python scripts/analyze_tools.py --list-placeholders --json > docs/placeholders.j
 **Goal**: Only tools for SMILES-based drug prediction
 
 ```python
-# In server.py
-from txgemma.tool_factory import build_tools
-
+# In server.py or config
 TOOLS = build_tools(filter_placeholder="Drug SMILES")
 ```
 
@@ -442,26 +502,23 @@ python scripts/analyze_tools.py --placeholder "Drug SMILES"
 - `predict_bioavailability`
 - `predict_solubility`
 
-### Use Case 2: Protein Engineering
+### Use Case 2: Exclude Regulatory Assays
 
-**Goal**: Only sequence-based tools
+**Goal**: Exclude ToxCast and Tox21 regulatory testing tools
 
 ```python
 TOOLS = build_tools(
-    filter_placeholder="sequence",
-    exact_match=False
+    filter_placeholder="Drug SMILES",
+    exclude_name_pattern="^(ToxCast|Tox21)"
 )
 ```
 
-**CLI:**
-```bash
-python scripts/analyze_tools.py --placeholder "sequence" --fuzzy
-```
+**Why?**
+- ToxCast/Tox21 tools are highly specialized regulatory assays
+- May not be relevant for early-stage discovery
+- Reduces tool count for cleaner AI tool selection
 
-**Result**: Tools using any sequence input:
-- `predict_drug_target_interaction` (Target sequence)
-- `predict_epitope_binding` (Epitope amino acid sequence)
-- `predict_protein_property` (Protein sequence)
+**Result**: All Drug SMILES tools except regulatory assays
 
 ### Use Case 3: Simple Screening
 
@@ -480,130 +537,259 @@ python scripts/analyze_tools.py --simple
 - `predict_toxicity(Drug SMILES)`
 - `predict_solubility(Drug SMILES)`
 
-### Use Case 4: Drug-Target Analysis
+### Use Case 4: Production-Ready Tools Only
 
-**Goal**: Only drug-protein interaction tools
+**Goal**: Exclude experimental or beta tools
 
 ```python
 TOOLS = build_tools(
-    filter_placeholders=["Drug SMILES", "Target sequence"],
-    match_all=True
+    filter_placeholder="Drug SMILES",
+    exclude_name_pattern="(?i)(experimental|beta|alpha|dev)"
 )
 ```
 
-**CLI:**
-```bash
-python scripts/analyze_tools.py \
-    --placeholders "Drug SMILES" "Target sequence"
-```
+**Why?**
+- More stable predictions for production
+- Avoid tools still under development
+- Consistent API across tool versions
 
-**Result**: Tools requiring both drug and target:
-- `predict_drug_target_interaction`
-- `predict_binding_affinity`
+### Use Case 5: Custom Tool Curation
 
-### Use Case 5: Clinical Development
-
-**Goal**: Tools for clinical predictions
+**Goal**: Specific set of high-quality tools
 
 ```python
-TOOLS = build_tools(filter_placeholder="Trial phase")
+# Include Drug SMILES tools
+# Exclude: ToxCast, Tox21, and complex multi-input tools
+TOOLS = build_tools(
+    filter_placeholder="Drug SMILES",
+    max_placeholders=2,
+    exclude_name_pattern="^(ToxCast|Tox21)"
+)
 ```
 
-**CLI:**
-```bash
-python scripts/analyze_tools.py --placeholder "Trial phase"
-```
-
-**Result**: Clinical trial tools:
-- `predict_clinical_trial_outcome`
-- `predict_adverse_events`
+**Result**: Curated, focused drug discovery toolset
 
 ---
 
 ## Programmatic Usage
 
-### Programmatic Discovery
-
-#### Find All Available Placeholders
+### Basic Filtering
 
 ```python
-from txgemma.prompts import get_loader
+from txgemma.tool_factory import build_tools
 
-loader = get_loader()
+# Filter by placeholder
+drug_tools = build_tools(filter_placeholder="Drug SMILES")
 
-# Get all placeholders
-placeholders = loader.all_placeholders()
-print(placeholders)
-# {'Drug SMILES', 'Target sequence', 'Indication', ...}
+# Filter by complexity
+simple_tools = build_tools(max_placeholders=1)
+
+# Exclude by pattern
+no_toxcast = build_tools(exclude_name_pattern="^ToxCast")
+
+# Combine filters
+focused_tools = build_tools(
+    filter_placeholder="Drug SMILES",
+    max_placeholders=1,
+    exclude_name_pattern="^ToxCast"
+)
 ```
 
-#### Check Placeholder Usage
+### All Filtering Parameters
+
+The `build_tools()` function supports the following parameters:
+
+#### `filter_placeholder` (str)
+Filter by a single placeholder name.
 
 ```python
-# Which tools use "Drug SMILES"?
-tools = loader.placeholder_usage("Drug SMILES")
-print(f"Drug SMILES used in {len(tools)} tools")
-# Drug SMILES used in 12 tools
+# Exact match (default)
+tools = build_tools(filter_placeholder="Drug SMILES")
 
-# Get the actual tool names
-print(sorted(tools))
-# ['predict_bioavailability', 'predict_toxicity', ...]
+# Fuzzy match (substring, case-insensitive)
+tools = build_tools(
+    filter_placeholder="smiles",
+    exact_match=False
+)
 ```
 
-#### Get Usage Statistics
+#### `filter_placeholders` (list[str])
+Filter by multiple placeholders.
 
 ```python
-stats = loader.placeholder_stats()
-for placeholder, count in sorted(stats.items(), key=lambda x: x[1], reverse=True)[:5]:
-    print(f"{placeholder}: {count} tools")
+# Match ALL placeholders (default)
+tools = build_tools(
+    filter_placeholders=["Drug SMILES", "Target sequence"],
+    match_all=True
+)
+
+# Match ANY placeholder
+tools = build_tools(
+    filter_placeholders=["Drug SMILES", "Protein sequence"],
+    match_all=False
+)
 ```
 
-**Output:**
-```
-Drug SMILES: 12 tools
-Target sequence: 5 tools
-Indication: 4 tools
-Trial phase: 2 tools
-Cell line: 2 tools
-```
+#### `match_all` (bool)
+When using `filter_placeholders`, determines if tools must have ALL or ANY of the specified placeholders.
 
-#### Find Most Common Placeholders
+- `True` (default): Tool must have ALL specified placeholders
+- `False`: Tool can have ANY of the specified placeholders
 
 ```python
-top = loader.most_common_placeholders(5)
-for placeholder, count in top:
-    print(f"{placeholder}: {count}")
+# Drug-target interaction tools (need both)
+tools = build_tools(
+    filter_placeholders=["Drug SMILES", "Target sequence"],
+    match_all=True  # Must have BOTH
+)
+
+# Any drug or protein tool
+tools = build_tools(
+    filter_placeholders=["Drug SMILES", "Protein sequence"],
+    match_all=False  # Can have EITHER
+)
 ```
 
-#### Check if Template Exists
+#### `exact_match` (bool)
+Controls placeholder matching behavior.
+
+- `True` (default): Exact string match
+- `False`: Fuzzy substring match (case-insensitive)
 
 ```python
-# Check without raising error
-if loader.has_template("predict_toxicity"):
-    template = loader.get("predict_toxicity")
+# Exact match
+tools = build_tools(
+    filter_placeholder="Drug SMILES",
+    exact_match=True
+)
+# Matches: "Drug SMILES" only
 
-# Or use 'in' operator
-if "predict_toxicity" in loader:
-    template = loader.get("predict_toxicity")
+# Fuzzy match
+tools = build_tools(
+    filter_placeholder="smiles",
+    exact_match=False
+)
+# Matches: "Drug SMILES", "Product SMILES", "Molecule SMILES", etc.
 ```
 
-#### Get Template Details
+#### `exclude_complex` (bool)
+Exclude tools with more than 2 placeholders.
 
 ```python
-template = loader.get("predict_toxicity")
+# Only simple tools (≤2 parameters)
+tools = build_tools(exclude_complex=True)
 
-print(f"Name: {template.name}")
-print(f"Placeholders: {template.placeholders}")
-print(f"Count: {template.placeholder_count()}")
-print(f"Description: {template.get_description()}")
-
-# Format with values
-prompt = template.format(**{"Drug SMILES": "CC(=O)O"})
+# Same as:
+tools = build_tools(max_placeholders=2)
 ```
 
-### Advanced Filtering Patterns
+**Note**: `max_placeholders` takes precedence over `exclude_complex` if both are specified.
 
-#### Dynamic Tool Loading
+#### `max_placeholders` (int)
+Maximum number of placeholders per tool.
+
+```python
+# Single-parameter tools only
+tools = build_tools(max_placeholders=1)
+
+# Up to 2 parameters
+tools = build_tools(max_placeholders=2)
+
+# Up to 3 parameters
+tools = build_tools(max_placeholders=3)
+```
+
+#### `exclude_name_pattern` (str)
+Regex pattern to exclude tools by name.
+
+```python
+# Exclude by prefix
+tools = build_tools(exclude_name_pattern="^ToxCast")
+
+# Exclude multiple families
+tools = build_tools(exclude_name_pattern="^(ToxCast|Tox21)")
+
+# Case-insensitive
+tools = build_tools(exclude_name_pattern="(?i)experimental")
+
+# Exclude by suffix
+tools = build_tools(exclude_name_pattern="_legacy$")
+```
+
+### Parameter Combinations
+
+You can combine any parameters for precise filtering:
+
+```python
+# Drug SMILES tools, simple only, no ToxCast, fuzzy match
+tools = build_tools(
+    filter_placeholder="smiles",
+    exact_match=False,
+    max_placeholders=1,
+    exclude_name_pattern="^ToxCast"
+)
+
+# Drug-target tools, excluding regulatory assays
+tools = build_tools(
+    filter_placeholders=["Drug SMILES", "Target sequence"],
+    match_all=True,
+    exclude_name_pattern="^(ToxCast|Tox21|AMES)"
+)
+
+# Any sequence tool, simple only
+tools = build_tools(
+    filter_placeholder="sequence",
+    exact_match=False,
+    exclude_complex=True
+)
+```
+
+### Filter Execution Order
+
+Filters are applied in this order:
+
+1. **Placeholder filtering** (`filter_placeholder` or `filter_placeholders`)
+2. **Name exclusion** (`exclude_name_pattern`)
+3. **Complexity filtering** (`max_placeholders` or `exclude_complex`)
+
+This order ensures efficient filtering and predictable results.
+
+### Advanced Pattern Matching
+
+```python
+# Exclude multiple prefixes
+tools = build_tools(
+    exclude_name_pattern="^(ToxCast|Tox21|AMES)"
+)
+
+# Case-insensitive exclusion
+tools = build_tools(
+    exclude_name_pattern="(?i)legacy"
+)
+
+# Exclude by suffix
+tools = build_tools(
+    exclude_name_pattern="_v1$"
+)
+
+# Complex regex patterns
+tools = build_tools(
+    exclude_name_pattern="^(ToxCast|Tox21).*_(ER|AR)_"
+)
+```
+
+### Error Handling
+
+```python
+try:
+    tools = build_tools(exclude_name_pattern="[invalid(")
+except ValueError as e:
+    print(f"Invalid regex pattern: {e}")
+    # Fall back to no exclusion
+    tools = build_tools()
+```
+
+### Dynamic Tool Loading
 
 ```python
 from txgemma.tool_factory import build_tools
@@ -616,49 +802,98 @@ class DynamicToolServer:
         if use_case not in self.tool_cache:
             if use_case == "drug_discovery":
                 self.tool_cache[use_case] = build_tools(
+                    filter_placeholder="Drug SMILES",
+                    exclude_name_pattern="^(ToxCast|Tox21)"
+                )
+            elif use_case == "drug_discovery_full":
+                self.tool_cache[use_case] = build_tools(
                     filter_placeholder="Drug SMILES"
                 )
-            elif use_case == "protein_analysis":
+            elif use_case == "simple_screening":
                 self.tool_cache[use_case] = build_tools(
-                    filter_placeholder="sequence",
-                    exact_match=False
+                    max_placeholders=1,
+                    exclude_name_pattern="(?i)(complex|advanced)"
                 )
         return self.tool_cache[use_case]
 ```
 
-#### User-Specific Tool Subsets
+### User-Specific Tool Subsets
 
 ```python
-def get_tools_for_user(user_role: str):
+def get_tools_for_user(user_role: str, include_experimental: bool = False):
     """Return tools appropriate for user's role."""
+    
+    exclude_pattern = None
+    if not include_experimental:
+        exclude_pattern = "(?i)(experimental|beta|alpha)"
+    
     if user_role == "medicinal_chemist":
-        return build_tools(filter_placeholder="Drug SMILES")
-    elif user_role == "structural_biologist":
         return build_tools(
-            filter_placeholder="sequence",
-            exact_match=False
+            filter_placeholder="Drug SMILES",
+            exclude_name_pattern=exclude_pattern or "^ToxCast"
         )
-    elif user_role == "clinical_researcher":
-        return build_tools(filter_placeholder="Trial phase")
+    elif user_role == "toxicologist":
+        # Toxicologists want ToxCast tools
+        return build_tools(
+            filter_placeholder="Drug SMILES",
+            exclude_name_pattern=exclude_pattern
+        )
+    elif user_role == "student":
+        # Students get simple tools only
+        pattern = exclude_pattern or "^ToxCast"
+        return build_tools(
+            max_placeholders=1,
+            exclude_name_pattern=pattern
+        )
     else:
-        return build_tools()  # All tools for admins
+        # Admins get all tools
+        return build_tools(exclude_name_pattern=exclude_pattern)
 ```
 
-#### Conditional Filtering
+### Conditional Filtering
 
 ```python
 import os
 
 # Load different tools based on environment
-if os.getenv("ENV") == "production":
-    # Production: only well-tested simple tools
-    TOOLS = build_tools(max_placeholders=2)
-elif os.getenv("ENV") == "development":
-    # Development: all tools for testing
-    TOOLS = build_tools()
+ENV = os.getenv("ENV", "development")
+EXCLUDE_EXPERIMENTAL = os.getenv("EXCLUDE_EXPERIMENTAL", "false").lower() == "true"
+
+if ENV == "production":
+    # Production: exclude experimental and ToxCast
+    TOOLS = build_tools(
+        filter_placeholder="Drug SMILES",
+        max_placeholders=2,
+        exclude_name_pattern="^(ToxCast|Tox21).*experimental"
+    )
+elif ENV == "staging":
+    # Staging: exclude only experimental
+    TOOLS = build_tools(
+        filter_placeholder="Drug SMILES",
+        exclude_name_pattern="(?i)(experimental|beta)" if EXCLUDE_EXPERIMENTAL else None
+    )
 else:
-    # Default: drug discovery focus
-    TOOLS = build_tools(filter_placeholder="Drug SMILES")
+    # Development: all tools
+    TOOLS = build_tools()
+```
+
+### Logging and Debugging
+
+```python
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
+# The exclude_name_pattern logs which tools are excluded
+tools = build_tools(
+    filter_placeholder="Drug SMILES",
+    exclude_name_pattern="^ToxCast"
+)
+
+# Output:
+# INFO:txgemma.tool_factory:Excluding tools matching pattern: ^ToxCast
+# INFO:txgemma.tool_factory:Excluded 15 tool(s) matching pattern '^ToxCast'
+# INFO:txgemma.tool_factory:Built 25 tools (filter_placeholder=Drug SMILES, max_placeholders=None, exclude_pattern=^ToxCast)
 ```
 
 ---
@@ -678,7 +913,19 @@ drug_tools = [t for t in all_tools if "Drug SMILES" in t.inputSchema["required"]
 drug_tools = build_tools(filter_placeholder="Drug SMILES")
 ```
 
-### 2. Use `get_tool_names()` for Lightweight Checks
+### 2. Exclusion is Fast
+
+The `exclude_name_pattern` filter is applied first, before any tool building:
+
+```python
+# ✅ Fast - excludes before building tools
+tools = build_tools(
+    filter_placeholder="Drug SMILES",
+    exclude_name_pattern="^ToxCast"  # Applied first
+)
+```
+
+### 3. Use `get_tool_names()` for Lightweight Checks
 
 ```python
 from txgemma.tool_factory import get_tool_names
@@ -692,19 +939,23 @@ if len(names) > 0:
     tools = build_tools(filter_placeholder="Drug SMILES")
 ```
 
-### 3. Cache Tool Subsets
+### 4. Cache Tool Subsets
 
 ```python
 # Build once, use many times
-DRUG_TOOLS = build_tools(filter_placeholder="Drug SMILES")
-PROTEIN_TOOLS = build_tools(filter_placeholder="sequence", exact_match=False)
+DRUG_TOOLS = build_tools(
+    filter_placeholder="Drug SMILES",
+    exclude_name_pattern="^ToxCast"
+)
+
+DRUG_TOOLS_WITH_TOXCAST = build_tools(
+    filter_placeholder="Drug SMILES"
+)
 
 # Use cached subsets
-def get_tools_for_use_case(use_case: str):
+def get_tools_for_use_case(use_case: str, include_toxcast: bool = False):
     if use_case == "drug_discovery":
-        return DRUG_TOOLS
-    elif use_case == "protein_analysis":
-        return PROTEIN_TOOLS
+        return DRUG_TOOLS_WITH_TOXCAST if include_toxcast else DRUG_TOOLS
     # ...
 ```
 
@@ -718,9 +969,10 @@ def get_tools_for_use_case(use_case: str):
 # server.py
 TOOLS = build_tools(
     filter_placeholder="Drug SMILES",
-    max_placeholders=2,  # Exclude complex multi-input tools
+    max_placeholders=2,
+    exclude_name_pattern="^(ToxCast|Tox21)"
 )
-# Result: Simple drug prediction tools only
+# Result: Simple drug prediction tools, excluding regulatory assays
 ```
 
 ### Configuration 2: Comprehensive Research Server
@@ -736,20 +988,63 @@ TOOLS = build_tools()  # Load everything
 ```python
 # server.py
 TOOLS = build_tools(
-    max_placeholders=1,  # Single-input only
+    max_placeholders=1,
+    exclude_name_pattern="(?i)(experimental|beta|legacy)"
 )
-# Result: Fast, simple predictions for high-throughput screening
+# Result: Fast, simple, stable predictions for high-throughput screening
 ```
 
-### Configuration 4: Multi-Modal Interaction Server
+### Configuration 4: Regulatory Toxicology Server
+
+```python
+# server.py
+# Include ONLY ToxCast and Tox21 tools
+import re
+from txgemma.tool_factory import build_tools
+
+all_tools = build_tools(filter_placeholder="Drug SMILES")
+tox_tools = [
+    t for t in all_tools 
+    if re.match(r"^(ToxCast|Tox21)", t.name)
+]
+# Result: Only regulatory toxicology assays
+```
+
+### Configuration 5: Educational/Training Server
 
 ```python
 # server.py
 TOOLS = build_tools(
-    filter_placeholders=["Drug SMILES", "Target sequence"],
-    match_all=False,  # Tools using EITHER drug or protein
+    max_placeholders=1,
+    exclude_name_pattern="^(ToxCast|Tox21|Advanced)"
 )
-# Result: All molecular and protein analysis tools
+# Result: Simple, easy-to-understand tools for learning
+```
+
+---
+
+## Common Exclusion Patterns
+
+Here are common regex patterns for excluding tools:
+
+```python
+# Exclude by prefix
+exclude_name_pattern="^ToxCast"           # All ToxCast tools
+exclude_name_pattern="^Tox21"             # All Tox21 tools
+exclude_name_pattern="^(ToxCast|Tox21)"   # Both families
+
+# Exclude by substring
+exclude_name_pattern="legacy"             # Any tool with "legacy"
+exclude_name_pattern="(?i)beta"           # Case-insensitive "beta"
+
+# Exclude by suffix
+exclude_name_pattern="_v1$"               # Tools ending with "_v1"
+exclude_name_pattern="_deprecated$"       # Deprecated tools
+
+# Complex patterns
+exclude_name_pattern="^(ToxCast|Tox21).*_(ER|AR)"  # Specific assays
+exclude_name_pattern="(?i)(experimental|alpha|beta|dev)"  # Development versions
+exclude_name_pattern="^(ToxCast|Tox21|AMES|Bacterial)"  # Multiple prefixes
 ```
 
 ---
@@ -763,22 +1058,40 @@ TOOLS = build_tools(
 - 🎯 Focused tool selection
 - 👥 Role-based access
 - 📊 Better organization
+- 🔒 Exclude unwanted tool categories
 
 ### Filtering Dimensions
 
-- By placeholder (exact or fuzzy)
-- By multiple placeholders (AND/OR)
-- By complexity (parameter count)
-- Combinations of above
+- **By placeholder** - Filter by input type
+- **By complexity** - Filter by parameter count
+- **By name pattern** - Exclude by regex (NEW)
+- **Combinations** - Use all three together
 
 ### Best Practices
 
 1. **Filter at build time, not runtime** - More efficient
-2. **Use CLI for exploration** - `analyze_tools.py` is your friend
-3. **Use `get_tool_names()` for quick checks** - Lightweight
-4. **Cache tool subsets for reuse** - Performance optimization
-5. **Match filtering to use case** - Purpose-driven design
-6. **Document your filtering choices** - Team clarity
+2. **Use exclusion patterns for unwanted categories** - Clean tool sets
+3. **Test regex patterns before deployment** - Avoid surprises
+4. **Use CLI for exploration** - `analyze_tools.py` is your friend
+5. **Cache tool subsets for reuse** - Performance optimization
+6. **Match filtering to use case** - Purpose-driven design
+7. **Document your filtering choices** - Team clarity
+8. **Log exclusions in production** - Visibility into what's filtered
+
+### Parameter Reference
+
+```python
+build_tools(
+    filter_placeholder=None,      # str: Filter by single placeholder
+    max_placeholders=None,        # int: Maximum placeholder count
+    exclude_name_pattern=None,    # str: Regex pattern to exclude tools
+)
+```
+
+**Filter Order:**
+1. `exclude_name_pattern` (first)
+2. `filter_placeholder`
+3. `max_placeholders` (last)
 
 ### CLI Quick Reference
 
@@ -790,8 +1103,6 @@ analyze_tools.py --template "tool_name"
 
 # Filtering
 analyze_tools.py --placeholder "Drug SMILES"
-analyze_tools.py --placeholder "smiles" --fuzzy
-analyze_tools.py --placeholders "Drug SMILES" "Target sequence"
 analyze_tools.py --simple
 analyze_tools.py --complex
 

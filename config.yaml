@@ -26,6 +26,14 @@ tools:
   # "Drug SMILES" = 677 drug tools (recommended, fast)
   # null = all 703 tools (slow)
   filter_placeholder: "Drug SMILES"
+
+  # Exclude tools by name pattern (regex)
+  # Examples:
+  #   "^ToxCast" - Exclude all ToxCast tools
+  #   "^(ToxCast|Tox21)" - Exclude ToxCast and Tox21 tools
+  #   "TOX21" - Exclude any tool with TOX21 in name
+  # null = no exclusion (default)
+  exclude_name_pattern: "^ToxCast"
   
   # Optional: limit tool complexity
   # max_placeholders: 2  # Only tools with ≤2 inputs
@@ -48,6 +56,7 @@ tools:
 #   max_new_tokens: 100
 # tools:
 #   filter_placeholder: "Drug SMILES"
+#   exclude_name_pattern: "^ToxCast"
 #
 # PRODUCTION (Balanced, 36GB VRAM):
 # ----------------------------------
@@ -59,6 +68,7 @@ tools:
 #   max_new_tokens: 200
 # tools:
 #   filter_placeholder: "Drug SMILES"
+#   exclude_name_pattern: "^ToxCast"
 #
 # RESEARCH (All tools, 54GB+ VRAM):
 # ----------------------------------
@@ -70,3 +80,4 @@ tools:
 #   max_new_tokens: 500
 # tools:
 #   filter_placeholder: null  # All tools
+#   exclude_name_pattern: null  # No exclusions

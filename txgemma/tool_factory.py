@@ -3,7 +3,9 @@ Dynamically generate MCP tools from TDC prompt templates.
 """
 
 import logging
-from typing import Any
+import re
+
+from typing import Any, Optional
 
 from mcp.types import Tool
 
@@ -15,7 +17,6 @@ logger = logging.getLogger(__name__)
 # -------------------------
 # Placeholder Metadata
 # -------------------------
-
 
 def get_placeholder_type(placeholder: str) -> str:
     """
@@ -117,11 +118,9 @@ def get_placeholder_pattern(placeholder: str) -> str | None:
 
     return None
 
-
 # -------------------------
 # Tool Building
 # -------------------------
-
 
 def build_tool_from_template(
     template: PromptTemplate,
@@ -169,7 +168,6 @@ def build_tool_from_template(
 
     return tool
 
-
 def build_tools(
     *,
     filter_placeholder: str | None = None,
@@ -178,6 +176,7 @@ def build_tools(
     exact_match: bool = True,
     exclude_complex: bool = False,
     max_placeholders: int | None = None,
+    exclude_name_pattern: str | None = None,
 ) -> list[Tool]:
     """
     Build MCP tools from TDC prompt definitions with flexible filtering.
@@ -187,8 +186,10 @@ def build_tools(
         filter_placeholders: Only build tools using these placeholders
         match_all: If True, tool must use ALL placeholders. If False, ANY.
         exact_match: If True, exact placeholder match. If False, fuzzy substring match.
-        exclude_complex: If True, skip tools with many placeholders
+        exclude_complex: If True, skip tools with many placeholders (>2)
         max_placeholders: Maximum number of placeholders per tool (None = no limit)
+        exclude_name_pattern: Regex pattern to exclude tools by name
+                             (e.g., "^ToxCast" to exclude all ToxCast tools)
 
     Returns:
         List of MCP Tool objects
@@ -211,13 +212,33 @@ def build_tools(
 
         # Any sequence-related tools (fuzzy match)
         >>> build_tools(filter_placeholder="sequence", exact_match=False)
+        
+        # Exclude all ToxCast tools
+        >>> build_tools(exclude_name_pattern="^ToxCast")
+        
+        # Drug SMILES tools, excluding ToxCast, simple only
+        >>> build_tools(
+        ...     filter_placeholder="Drug SMILES",
+        ...     max_placeholders=1,
+        ...     exclude_name_pattern="^ToxCast"
+        ... )
     """
     loader = get_loader()
+
+    # Compile exclusion regex pattern if provided
+    exclude_pattern = None
+    if exclude_name_pattern:
+        try:
+            exclude_pattern = re.compile(exclude_name_pattern)
+            logger.info(f"Excluding tools matching pattern: {exclude_name_pattern}")
+        except re.error as e:
+            logger.error(f"Invalid exclude pattern '{exclude_name_pattern}': {e}")
+            raise ValueError(f"Invalid regex pattern: {exclude_name_pattern}") from e
 
     # Get placeholder statistics for better descriptions
     placeholder_stats = loader.placeholder_stats()
 
-    # Apply filters to get template subset
+    # Apply placeholder filters to get template subset
     if filter_placeholder:
         templates = loader.filter_by_placeholder(filter_placeholder, exact=exact_match)
     elif filter_placeholders:
@@ -225,7 +246,19 @@ def build_tools(
     else:
         templates = loader.all()
 
-    # Apply complexity filter
+    # Apply name exclusion filter (before complexity filtering for efficiency)
+    excluded_count = 0
+    if exclude_pattern:
+        filtered_templates = {}
+        for name, template in templates.items():
+            if exclude_pattern.search(name):
+                logger.debug(f"Excluding tool '{name}' (matches exclude pattern)")
+                excluded_count += 1
+            else:
+                filtered_templates[name] = template
+        templates = filtered_templates
+
+    # Apply complexity filters
     if max_placeholders is not None:
         templates = {
             name: tmpl
@@ -233,7 +266,7 @@ def build_tools(
             if tmpl.placeholder_count() <= max_placeholders
         }
     elif exclude_complex:
-        # Default threshold for "complex"
+        # Default threshold for "complex" is >2 placeholders
         templates = {
             name: tmpl for name, tmpl in templates.items() if tmpl.placeholder_count() <= 2
         }
@@ -244,14 +277,26 @@ def build_tools(
         try:
             tool = build_tool_from_template(template, placeholder_stats)
             tools.append(tool)
-            logger.info(
+            logger.debug(
                 f"Built tool: {name} "
                 f"({len(template.placeholders)} parameter{'s' if len(template.placeholders) != 1 else ''})"
             )
         except Exception as e:
             logger.error(f"Failed to build tool '{name}': {e}")
 
-    logger.info(f"Successfully built {len(tools)} tools (filtered from {len(loader.all())} total)")
+    # Log summary
+    if excluded_count > 0:
+        logger.info(f"Excluded {excluded_count} tool(s) matching pattern '{exclude_name_pattern}'")
+
+    logger.info(
+        f"Built {len(tools)} tools "
+        f"(filter_placeholder={filter_placeholder}, "
+        f"filter_placeholders={filter_placeholders}, "
+        f"max_placeholders={max_placeholders}, "
+        f"exclude_pattern={exclude_name_pattern}) "
+        f"from {len(loader.all())} total"
+    )
+
     return tools
 
 
@@ -289,7 +334,6 @@ def get_tool_names(
 # -------------------------
 # Tool Introspection
 # -------------------------
-
 
 def analyze_tools() -> dict[str, Any]:
     """
