@@ -5,7 +5,7 @@ Provides Model Context Protocol tools for TxGemma therapeutic AI models.
 """
 
 from txgemma.chat_factory import register_chat_tool
-from txgemma.executor import execute_chat, execute_chat_async, execute_tool, execute_tool_async
+from txgemma.executor import execute_chat, execute_tool
 from txgemma.model import (
     TxGemmaChatModel,
     TxGemmaPredictModel,
@@ -25,9 +25,7 @@ __all__ = [
     "get_chat_model",
     # Execution
     "execute_tool",
-    "execute_tool_async",
     "execute_chat",
-    "execute_chat_async",
     # Tool building
     "build_tools",
     "register_chat_tool",

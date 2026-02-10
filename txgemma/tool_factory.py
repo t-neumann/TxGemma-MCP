@@ -118,6 +118,90 @@ def get_placeholder_pattern(placeholder: str) -> str | None:
 
     return None
 
+def normalize_parameter_name(placeholder: str) -> str:
+    """
+    Convert TDC placeholder to valid Python/Pydantic identifier.
+    
+    Args:
+        placeholder: Original placeholder name (e.g., "Drug SMILES")
+    
+    Returns:
+        Normalized name (e.g., "drug_smiles")
+    
+    Examples:
+        >>> normalize_parameter_name("Drug SMILES")
+        'drug_smiles'
+        >>> normalize_parameter_name("Target sequence")
+        'target_sequence'
+        >>> normalize_parameter_name("Trial phase")
+        'trial_phase'
+        >>> normalize_parameter_name("Epitope amino acid sequence")
+        'epitope_amino_acid_sequence'
+    """
+    # Convert to lowercase and replace spaces with underscores
+    normalized = placeholder.lower().replace(" ", "_")
+    
+    # Replace other non-alphanumeric characters with underscores
+    normalized = ''.join(c if c.isalnum() or c == '_' else '_' for c in normalized)
+    
+    # Remove consecutive underscores
+    while '__' in normalized:
+        normalized = normalized.replace('__', '_')
+    
+    # Remove leading/trailing underscores
+    normalized = normalized.strip('_')
+    
+    return normalized
+
+def get_parameter_mapping(
+    templates: dict[str, PromptTemplate] | None = None
+) -> dict[str, str]:
+    """
+    Get mapping from normalized names back to original placeholder names.
+    
+    This is used when executing tools - we receive normalized parameter names
+    from the MCP client, but need to substitute original names in the prompt.
+    
+    Args:
+        templates: Optional dict of templates. If None, loads all templates.
+    
+    Returns:
+        Dictionary mapping normalized_name -> original_placeholder_name
+        
+    Example:
+        {
+            'drug_smiles': 'Drug SMILES',
+            'target_sequence': 'Target sequence',
+            'trial_phase': 'Trial phase',
+            ...
+        }
+    """
+    if templates is None:
+        from txgemma.prompts import get_loader
+        loader = get_loader()
+        templates = loader.all()
+    
+    mapping = {}
+    
+    # Collect all unique placeholders across all templates
+    for template in templates.values():
+        for placeholder in template.placeholders:
+            normalized = normalize_parameter_name(placeholder)
+            mapping[normalized] = placeholder
+    
+    return mapping
+
+
+# Global mapping - computed once at module load
+_PARAMETER_MAPPING = None
+
+def get_cached_parameter_mapping() -> dict[str, str]:
+    """Get cached parameter mapping (computed once)."""
+    global _PARAMETER_MAPPING
+    if _PARAMETER_MAPPING is None:
+        _PARAMETER_MAPPING = get_parameter_mapping()
+    return _PARAMETER_MAPPING
+
 # -------------------------
 # Tool Building
 # -------------------------
@@ -128,44 +212,45 @@ def build_tool_from_template(
 ) -> Tool:
     """
     Build an MCP Tool from a prompt template.
-
-    Args:
-        template: PromptTemplate instance
-        placeholder_stats: Optional placeholder usage statistics for better descriptions
-
-    Returns:
-        MCP Tool object with full schema
+    
+    Uses normalized parameter names (e.g., "drug_smiles") for the schema,
+    but preserves original names (e.g., "Drug SMILES") in title for display.
     """
-    # Build input schema from placeholders
     properties = {}
-
+    required = []
+    
     for placeholder in template.placeholders:
+        # Normalize the parameter name for the schema
+        param_name = normalize_parameter_name(placeholder)
+        required.append(param_name)
+        
         usage_count = placeholder_stats.get(placeholder) if placeholder_stats else None
-
+        
         prop_schema = {
             "type": get_placeholder_type(placeholder),
             "description": get_placeholder_description(placeholder, usage_count),
+            "title": placeholder,  # ← Original name for MCP Inspector display
         }
-
+        
         # Add pattern validation if available
         pattern = get_placeholder_pattern(placeholder)
         if pattern:
             prop_schema["pattern"] = pattern
-
-        properties[placeholder] = prop_schema
-
-    # Create the tool with full schema
+        
+        properties[param_name] = prop_schema
+    
+    # Create the tool with normalized parameter names
     tool = Tool(
         name=template.name,
         description=template.get_description(),
         inputSchema={
             "type": "object",
             "properties": properties,
-            "required": template.placeholders,
+            "required": required,
             "additionalProperties": False,
         },
     )
-
+    
     return tool
 
 def build_tools(
