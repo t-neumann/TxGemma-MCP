@@ -57,7 +57,7 @@ def get_placeholder_description(placeholder: str, usage_count: int | None = None
     Returns:
         Description string
     """
-    # Known placeholder descriptions
+
     descriptions = {
         "Drug SMILES": "SMILES string representation of the drug molecule",
         "Product SMILES": "SMILES string of the product/target molecule",
@@ -76,15 +76,12 @@ def get_placeholder_description(placeholder: str, usage_count: int | None = None
         "Target name": "Name or identifier of the biological target",
     }
 
-    # Try exact match first
     if placeholder in descriptions:
         desc = descriptions[placeholder]
     else:
-        # Fallback: generate from placeholder name
         desc = placeholder.replace("_", " ").replace("{", "").replace("}", "")
         desc = f"Input parameter: {desc}"
 
-    # Optionally add usage info
     if usage_count and usage_count > 1:
         desc += f" (used in {usage_count} tools)"
 
@@ -103,7 +100,6 @@ def get_placeholder_pattern(placeholder: str) -> str | None:
     """
     placeholder_lower = placeholder.lower()
 
-    # SMILES validation (basic)
     if "smiles" in placeholder_lower:
         # Very basic SMILES pattern - just check it has some chemical-like characters
         return r"^[A-Za-z0-9@+\-\[\]\(\)=#$:\.]+$"
@@ -183,7 +179,6 @@ def get_parameter_mapping(
     
     mapping = {}
     
-    # Collect all unique placeholders across all templates
     for template in templates.values():
         for placeholder in template.placeholders:
             normalized = normalize_parameter_name(placeholder)
@@ -296,7 +291,7 @@ def build_tool_from_template(
         prop_schema = {
             "type": get_placeholder_type(placeholder),
             "description": get_placeholder_description(placeholder, usage_count),
-            "title": placeholder,  # ← Original name for MCP Inspector display
+            "title": placeholder,  # Original name for MCP Inspector display
         }
         
         # Add pattern validation if available
@@ -427,7 +422,6 @@ def build_tools(
             name: tmpl for name, tmpl in templates.items() if tmpl.placeholder_count() <= 2
         }
 
-    # Build tools
     tools = []
     for name, template in templates.items():
         try:
@@ -440,7 +434,6 @@ def build_tools(
         except Exception as e:
             logger.error(f"Failed to build tool '{name}': {e}")
 
-    # Log summary
     if excluded_count > 0:
         logger.info(f"Excluded {excluded_count} tool(s) matching pattern '{exclude_name_pattern}'")
 
@@ -508,7 +501,6 @@ def analyze_tools() -> dict[str, Any]:
     all_templates = loader.all()
     placeholder_stats = loader.placeholder_stats()
 
-    # Group by complexity
     tools_by_complexity = {}
     for template in all_templates.values():
         count = template.placeholder_count()

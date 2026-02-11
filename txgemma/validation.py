@@ -31,10 +31,9 @@ class InputValidator:
     # Maximum lengths to prevent DoS
     MAX_TOOL_NAME_LENGTH = 100
     MAX_PARAM_NAME_LENGTH = 100
-    MAX_STRING_VALUE_LENGTH = 50000  # ~50KB for SMILES/sequences
+    MAX_STRING_VALUE_LENGTH = 50000
     MAX_TOTAL_PARAMS = 10
     
-    # Valid patterns
     TOOL_NAME_PATTERN = re.compile(r'^[a-zA-Z0-9_-]+$')
     PARAM_NAME_PATTERN = re.compile(r'^[a-z_][a-z0-9_]*$')
     
@@ -211,7 +210,6 @@ class InputValidator:
             raise
 
 
-# Convenience function for use in executor
 def validate_tool_call(tool_name: str, arguments: dict[str, Any]) -> tuple[str, dict]:
     """
     Validate a tool call.

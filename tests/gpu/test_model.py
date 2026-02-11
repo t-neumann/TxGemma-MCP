@@ -3,8 +3,6 @@ Tests for txgemma.model module.
 
 These tests require GPU and model download (~5GB for predict, ~18GB for chat).
 
-Run with: pytest tests/gpu/test_model.py --run-gpu
-
 Test coverage:
 - Model initialization and configuration
 - Singleton pattern per model class

@@ -31,7 +31,6 @@ PLACEHOLDER_REGEX = re.compile(r"\{([^{}]+)\}")
 # PromptTemplate
 # -------------------------
 
-
 class PromptTemplate:
     """
     Represents a single TxGemma / TDC prompt template.
@@ -146,7 +145,6 @@ class PromptTemplate:
 # PromptLoader
 # -------------------------
 
-
 class PromptLoader:
     """
     Load and manage TxGemma / TDC prompt templates.
@@ -166,7 +164,7 @@ class PromptLoader:
         self._templates: dict[str, PromptTemplate] = {}
         self._placeholder_index: dict[str, set[str]] = defaultdict(set)
         self._loaded = False
-        self._source = None  # Track where prompts were loaded from
+        self._source = None
 
     # ---- Loading ----
 
@@ -230,11 +228,9 @@ class PromptLoader:
 
         data = self._load_json()
 
-        # Validate top-level structure
         if not isinstance(data, dict):
             raise ValueError(f"Prompts JSON must be a dictionary, got {type(data).__name__}")
 
-        # Parse each prompt
         for name, content in data.items():
             try:
                 if isinstance(content, str):
@@ -260,7 +256,6 @@ class PromptLoader:
                 logger.error(f"Failed to load prompt '{name}': {e}")
                 raise
 
-        # Build reverse index for efficient lookup
         self._build_placeholder_index()
 
         self._loaded = True
@@ -463,7 +458,6 @@ class PromptLoader:
 
     def sequence_prompts(self) -> dict[str, PromptTemplate]:
         """Convenience: Get all templates that use protein/target sequences."""
-        # Fuzzy match for any sequence-related placeholder
         return self.filter_by_placeholder("sequence", exact=False)
 
     def simple_prompts(self, max_placeholders: int = 1) -> dict[str, PromptTemplate]:
@@ -517,7 +511,6 @@ def get_loader() -> PromptLoader:
     global _default_loader
     if _default_loader is None:
         try:
-            # Try to load from config
             from txgemma.config import get_config
 
             config = get_config()

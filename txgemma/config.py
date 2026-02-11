@@ -2,7 +2,7 @@
 Configuration management for TxGemma MCP server.
 
 Loads settings from config.yaml with environment variable overrides.
-Priority: Environment variables → config.yaml → defaults
+Priority: Environment variables -> config.yaml -> defaults
 """
 
 import logging
@@ -41,19 +41,16 @@ class ToolsConfig(BaseModel):
 
     prompts: PromptsConfig = Field(default_factory=PromptsConfig)
     
-    # Single placeholder filter
     filter_placeholder: str | None = Field(
         default=None,
         description="Filter tools by a single placeholder (e.g., 'Drug SMILES')"
     )
     
-    # Multiple placeholder filter  
     filter_placeholders: list[str] | None = Field(
         default=None,
         description="Filter tools by multiple placeholders"
     )
     
-    # Placeholder matching options
     match_all: bool = Field(
         default=True,
         description="If True, match ALL placeholders; if False, match ANY"
@@ -63,7 +60,6 @@ class ToolsConfig(BaseModel):
         description="If True, exact placeholder match; if False, fuzzy substring match"
     )
     
-    # Complexity filters
     exclude_complex: bool = Field(
         default=False,
         description="Exclude tools with >2 placeholders"
@@ -73,13 +69,11 @@ class ToolsConfig(BaseModel):
         description="Maximum number of placeholders per tool"
     )
     
-    # Name-based exclusion
     exclude_name_pattern: str | None = Field(
         default=None,
         description="Regex pattern to exclude tools by name (e.g., '^ToxCast')"
     )
     
-    # Chat tool
     enable_chat: bool = Field(
         default=True,
         description="Enable the TxGemma chat tool"
@@ -105,11 +99,9 @@ def _parse_env_value(value: str, key: str) -> any:
     Returns:
         Parsed value (int, bool, str, or None)
     """
-    # Handle null/none values
     if value.lower() in ["null", "none", ""]:
         return None
     
-    # Integer types
     if key in ["max_new_tokens", "max_placeholders"]:
         try:
             return int(value)
@@ -117,11 +109,9 @@ def _parse_env_value(value: str, key: str) -> any:
             logger.warning(f"Invalid integer for {key}: {value}")
             return None
     
-    # Boolean types
     if key in ["exact_match", "match_all", "exclude_complex", "enable_chat"]:
         return value.lower() in ["1", "true", "yes", "on"]
     
-    # String types (default)
     return value
 
 
@@ -161,7 +151,6 @@ def _apply_env_overrides(config_dict: dict) -> None:
             raw_value = os.environ[env_var]
             parsed_value = _parse_env_value(raw_value, key)
             
-            # Ensure section exists
             if section not in config_dict:
                 config_dict[section] = {}
             
@@ -187,11 +176,9 @@ def load_config(config_path: Path | None = None) -> Config:
     Raises:
         Exception: If config file is invalid
     """
-    # Default config path
     if config_path is None:
         config_path = Path("config.yaml")
 
-    # Load from file if exists
     config_dict = {}
     if config_path.exists():
         logger.info(f"Loading configuration from {config_path}")
@@ -200,10 +187,8 @@ def load_config(config_path: Path | None = None) -> Config:
     else:
         logger.info(f"Config file {config_path} not found, using defaults")
 
-    # Apply environment variable overrides
     _apply_env_overrides(config_dict)
 
-    # Create and validate config
     try:
         config = Config(**config_dict)
         logger.info("Configuration loaded successfully")
@@ -219,10 +204,7 @@ def load_config(config_path: Path | None = None) -> Config:
         logger.error(f"Failed to load configuration: {e}")
         raise
 
-
-# Module-level singleton
 _config: Config | None = None
-
 
 def get_config() -> Config:
     """

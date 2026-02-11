@@ -66,17 +66,14 @@ def reset_all_caches() -> None:
         >>> reset_all_caches()
         >>> # All caches cleared, will reload from source on next access
     """
-    # Reset parameter mapping
     reset_parameter_mapping()
     
-    # Reset config singleton
     from txgemma.config import reset_config
     reset_config()
     
     logger.info("Reset all module-level caches")
 
 
-# Context manager for temporary cache overrides (for testing)
 class ParameterMappingOverride:
     """
     Context manager to temporarily override parameter mapping.

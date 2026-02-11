@@ -1,5 +1,8 @@
 """
 Tests for txgemma.prompts module.
+
+Tests template loading, placeholder extraction, and filtering with file I/O.
+
 """
 
 import json
@@ -14,10 +17,11 @@ from txgemma.prompts import (
     get_loader,
 )
 
+pytestmark = [pytest.mark.integration]
+
 # =============================================================================
 # PromptTemplate Tests
 # =============================================================================
-
 
 class TestPromptTemplate:
     """Tests for PromptTemplate class."""
@@ -152,11 +156,9 @@ class TestPromptTemplate:
         assert "'test'" in repr_str
         assert "Drug SMILES" in repr_str
 
-
 # =============================================================================
 # PromptLoader Tests
 # =============================================================================
-
 
 class TestPromptLoader:
     """Tests for PromptLoader class."""
@@ -668,11 +670,9 @@ class TestPromptLoader:
         assert loader.source is not None
         assert str(prompts_file) in loader.source
 
-
 # =============================================================================
 # Global Loader Tests
 # =============================================================================
-
 
 class TestGlobalLoader:
     """Tests for global loader function."""
@@ -692,11 +692,9 @@ class TestGlobalLoader:
         assert loader.filename == "tdc_prompts.json"
         assert loader.local_override is None
 
-
 # =============================================================================
 # Regex Tests
 # =============================================================================
-
 
 class TestPlaceholderRegex:
     """Tests for PLACEHOLDER_REGEX."""

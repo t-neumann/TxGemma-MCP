@@ -2,7 +2,6 @@
 Pytest configuration and shared fixtures.
 
 Provides:
-- Custom CLI options (--run-gpu)
 - Marker-based test skipping
 - Shared fixtures for common test needs
 """
@@ -14,27 +13,27 @@ from unittest.mock import Mock
 # CLI OPTIONS
 # =========================================================================
 
-def pytest_addoption(parser):
-    """Add custom command-line options to pytest."""
-    parser.addoption(
-        "--run-gpu",
-        action="store_true",
-        default=False,
-        help="Run tests that require GPU (marked with @pytest.mark.gpu)",
-    )
+# def pytest_addoption(parser):
+#     """Add custom command-line options to pytest."""
+#     parser.addoption(
+#         "--run-gpu",
+#         action="store_true",
+#         default=False,
+#         help="Run tests that require GPU (marked with @pytest.mark.gpu)",
+#     )
 
 # =========================================================================
 # MARKER-BASED SKIPPING
 # =========================================================================
 
-def pytest_collection_modifyitems(config, items):
-    """Skip GPU tests unless explicitly requested."""
-    run_gpu = config.getoption("--run-gpu")
-    skip_gpu = pytest.mark.skip(reason="need --run-gpu option to run")
+# def pytest_collection_modifyitems(config, items):
+#     """Skip GPU tests unless explicitly requested."""
+#     run_gpu = config.getoption("--run-gpu")
+#     skip_gpu = pytest.mark.skip(reason="need --run-gpu option to run")
 
-    for item in items:
-        if "gpu" in item.keywords and not run_gpu:
-            item.add_marker(skip_gpu)
+#     for item in items:
+#         if "gpu" in item.keywords and not run_gpu:
+#             item.add_marker(skip_gpu)
 
 # =========================================================================
 # SHARED FIXTURES

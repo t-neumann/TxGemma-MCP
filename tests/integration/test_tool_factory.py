@@ -4,7 +4,6 @@ Tests for txgemma.tool_factory module.
 Tests tool building, filtering, and introspection with proper mocking.
 Focus on the NEW description building logic that includes full prompts.
 
-Location: tests/integration/test_tool_factory.py
 """
 
 from unittest.mock import Mock, patch
@@ -25,9 +24,7 @@ from txgemma.tool_factory import (
     suggest_tool_subsets,
 )
 
-# Mark all tests as integration tests
 pytestmark = [pytest.mark.integration]
-
 
 # =============================================================================
 # TEST FIXTURES

@@ -18,9 +18,7 @@ from txgemma.validation import (
     validate_tool_call,
 )
 
-# Mark all tests in this file as security-related
 pytestmark = [pytest.mark.unit, pytest.mark.security]
-
 
 # =============================================================================
 # TOOL NAME VALIDATION

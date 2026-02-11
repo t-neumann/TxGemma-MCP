@@ -35,7 +35,6 @@ class TxGemmaModelBase(ABC):
     - generate()
     """
     
-    # Class-level singleton instance (overridden in each subclass)
     _instance: Optional["TxGemmaModelBase"] = None
     
     def __new__(cls, *args, **kwargs):
@@ -65,10 +64,9 @@ class TxGemmaModelBase(ABC):
         if self._initialized:
             return
 
-        # Load config values (subclass-specific)
         config_model, config_max_tokens = self._load_config_values()
 
-        # Priority: argument → config → default
+        # Priority: argument -> config -> default
         self.model_name = (
             model_name
             if model_name is not None
@@ -168,7 +166,6 @@ class TxGemmaPredictModel(TxGemmaModelBase):
     Configuration loaded from config.yaml by default.
     """
     
-    # Class-specific singleton instance
     _instance: Optional["TxGemmaPredictModel"] = None
     
     def _get_default_model_name(self) -> str:
@@ -229,7 +226,6 @@ class TxGemmaChatModel(TxGemmaModelBase):
     Configuration loaded from config.yaml by default.
     """
     
-    # Class-specific singleton instance
     _instance: Optional["TxGemmaChatModel"] = None
     
     def _get_default_model_name(self) -> str:
@@ -284,16 +280,12 @@ class TxGemmaChatModel(TxGemmaModelBase):
             # It's already a tensor
             inputs = result.to(self.model.device)
 
-        # Generate response
         outputs = self.model.generate(input_ids=inputs, max_new_tokens=max_tokens)
 
-        # Decode response only
         response = self.tokenizer.decode(outputs[0, len(inputs[0]) :], skip_special_tokens=True)
 
         return response.strip()
 
-
-# Singleton accessors
 def get_predict_model() -> TxGemmaPredictModel:
     """Get the singleton TxGemmaPredictModel instance."""
     return TxGemmaPredictModel()

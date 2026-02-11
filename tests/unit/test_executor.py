@@ -4,7 +4,6 @@ Tests for txgemma.executor module.
 Tests tool execution logic with mocked dependencies using dependency injection.
 Focus on parameter mapping, validation, and error handling.
 
-Location: tests/unit/test_executor.py
 """
 
 from unittest.mock import Mock, patch
@@ -14,9 +13,7 @@ import pytest
 from txgemma.executor import execute_chat, execute_tool
 from txgemma.validation import ValidationError
 
-# Mark all tests as unit tests
 pytestmark = [pytest.mark.unit]
-
 
 # =============================================================================
 # TEST FIXTURES

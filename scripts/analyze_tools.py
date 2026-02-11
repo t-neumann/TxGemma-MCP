@@ -2,39 +2,6 @@
 """
 Analyze available TxGemma tools and explore prompts.
 
-Usage:
-    # List all placeholders
-    python scripts/analyze_tools.py --list-placeholders
-
-    # Show all tools
-    python scripts/analyze_tools.py
-
-    # Show tools using specific placeholder
-    python scripts/analyze_tools.py --placeholder "Drug SMILES"
-
-    # Fuzzy search for placeholders
-    python scripts/analyze_tools.py --placeholder "smiles" --fuzzy
-
-    # Show simple tools only
-    python scripts/analyze_tools.py --simple
-
-    # Exclude ToxCast tools
-    python scripts/analyze_tools.py --exclude "^ToxCast"
-
-    # Combine filters
-    python scripts/analyze_tools.py --placeholder "Drug SMILES" --exclude "^ToxCast" --simple
-
-    # Show tools using multiple placeholders (ALL)
-    python scripts/analyze_tools.py --placeholders "Drug SMILES" "Target sequence"
-
-    # Show tools using multiple placeholders (ANY)
-    python scripts/analyze_tools.py --placeholders "Drug SMILES" "Protein sequence" --any
-
-    # JSON output
-    python scripts/analyze_tools.py --json
-
-    # Show specific template details
-    python scripts/analyze_tools.py --template "predict_toxicity"
 """
 
 import argparse
@@ -42,7 +9,6 @@ import json
 import sys
 from pathlib import Path
 
-# Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from txgemma.prompts import get_loader
@@ -92,7 +58,7 @@ def print_template_details(template_name: str):
         print(f"  ... ({len(lines) - 10} more lines)")
 
     print("\nUsed by:")
-    # Show which tool factory would create from this
+
     tools = build_tools()
     matching = [t for t in tools if t.name == template_name]
     if matching:
@@ -191,30 +157,26 @@ Examples:
 
     args = parser.parse_args()
 
-    # Set up logging if verbose
     if args.verbose:
         import logging
 
         logging.basicConfig(level=logging.DEBUG)
     else:
         import logging
-        logging.basicConfig(level=logging.WARNING)  # Suppress INFO logs unless verbose
+        logging.basicConfig(level=logging.WARNING)
 
     loader = get_loader()
 
-    # Show prompt source
     if args.source:
         print_section("Prompt Source")
         print(f"  Loaded from: {loader.source or 'Not loaded yet'}")
         print(f"  Total templates: {len(loader)}")
         return
 
-    # Show template details
     if args.template:
         print_template_details(args.template)
         return
 
-    # List placeholders
     if args.list_placeholders:
         stats = loader.placeholder_stats()
 
@@ -241,7 +203,6 @@ Examples:
 
         return
 
-    # Build tools with filters
     filter_desc_parts = []
     
     if args.placeholder:
@@ -263,7 +224,6 @@ Examples:
 
     filter_desc = ", ".join(filter_desc_parts) if filter_desc_parts else "all"
 
-    # Build tools with appropriate filters
     build_kwargs = {}
     
     if args.placeholder:
@@ -280,18 +240,15 @@ Examples:
     if args.exclude:
         build_kwargs["exclude_name_pattern"] = args.exclude
 
-    # Build the tools
     try:
         tools = build_tools(**build_kwargs)
     except ValueError as e:
         print(f"\nError: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # Apply complex filter after building (for compatibility)
     if args.complex:
         tools = [t for t in tools if len(t.inputSchema["required"]) >= 3]
 
-    # Output results
     if args.json:
         output = []
         for tool in tools:
@@ -328,7 +285,6 @@ Examples:
 
             print()
 
-        # Show statistics
         print_section("Tool Statistics")
         stats = analyze_tools()
 
@@ -349,7 +305,6 @@ Examples:
         for placeholder, count in stats["most_common_placeholders"][:5]:
             print(f"    {placeholder:<40} ({count:2} tools)")
 
-        # Show suggested subsets
         print_section("Suggested Tool Subsets")
         subsets = suggest_tool_subsets()
 

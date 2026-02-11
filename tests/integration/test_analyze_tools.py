@@ -2,6 +2,8 @@
 Tests for scripts/analyze_tools.py
 
 Tests the CLI tool for analyzing and filtering TxGemma tools.
+Uses mocked components for fast execution without HuggingFace/GPU.
+
 """
 
 import json
@@ -13,15 +15,16 @@ from unittest.mock import Mock, MagicMock, patch
 import pytest
 
 # Add scripts directory to path for imports
-scripts_dir = Path(__file__).parent.parent / "scripts"
+scripts_dir = Path(__file__).parent.parent.parent / "scripts"
 sys.path.insert(0, str(scripts_dir))
 
 from analyze_tools import main, print_section, print_template_details
 
+pytestmark = [pytest.mark.integration]
 
-# -------------------------
-# Test Fixtures
-# -------------------------
+# =============================================================================
+# TEST FIXTURES
+# =============================================================================
 
 @pytest.fixture
 def mock_loader():
@@ -144,7 +147,6 @@ class TestHelperFunctions:
         captured = capsys.readouterr()
         
         assert "Error" in captured.out
-
 
 # -------------------------
 # CLI Argument Tests
