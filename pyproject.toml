@@ -23,13 +23,13 @@ dependencies = [
     "transformers>=4.40.0",
     "accelerate>=0.20.0",
     "pydantic>=2.0.0",
+    "pyyaml>=6.0.0",
     "httpx>=0.27.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",
-    "pytest-asyncio>=0.23.0",
     "pytest-cov>=4.1.0",
     "pytest-mock>=3.12.0",
     "ruff>=0.4.0",
@@ -40,12 +40,192 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/server"]
+packages = ["txgemma"]
+
+# =========================================================================
+# PYTEST CONFIGURATION
+# =========================================================================
+
+[tool.pytest.ini_options]
+# Test discovery
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+# Markers for test categorization
+markers = [
+    # Speed/Complexity
+    "unit: Fast unit tests with mocks (< 0.1s)",
+    "integration: Integration tests with real dependencies (< 5s)",
+    "slow: Slow tests (> 5s)",
+    
+    # Resources
+    "gpu: Requires GPU/CUDA hardware",
+    "network: Requires network access",
+    
+    # Categories
+    "security: Security-related tests (validation, injection, etc.)",
+    "model: Tests involving model loading/generation",
+    
+    # Quality
+    "smoke: Critical smoke tests (must always pass)",
+]
+
+# Output and behavior options
+addopts = [
+    "--strict-markers",      # Fail on unknown markers
+    "--strict-config",       # Fail on config warnings
+    "--verbose",             # Verbose output
+    "--color=yes",           # Colored output
+    "-ra",                   # Show summary of all test outcomes
+    "--tb=short",            # Shorter tracebacks
+    "--ignore=scripts/",     # Don't discover tests in scripts
+]
+
+# Warning filters
+filterwarnings = [
+    "error",                 # Turn warnings into errors (strict mode)
+    # Allow specific warnings from dependencies
+    "ignore::DeprecationWarning:transformers.*",
+    "ignore::UserWarning:torch.*",
+    "ignore::FutureWarning:transformers.*",
+]
+
+# Minimum Python version for tests
+minversion = "8.0"
+
+# =========================================================================
+# COVERAGE CONFIGURATION
+# =========================================================================
+
+[tool.coverage.run]
+source = ["txgemma"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__init__.py",
+    "*/conftest.py",
+]
+branch = true                # Measure branch coverage
+parallel = true              # Support parallel test runs
+
+[tool.coverage.report]
+exclude_lines = [
+    # Standard exclusions
+    "pragma: no cover",
+    "def __repr__",
+    "def __str__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    
+    # Defensive programming
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "if typing.TYPE_CHECKING:",
+    
+    # Abstract methods
+    "@abstractmethod",
+    "@abc.abstractmethod",
+    "@overload",
+    
+    # Type stubs
+    "\\.\\.\\.",             # Ellipsis (...)
+    "pass",
+]
+
+# Display options
+precision = 2                # Show 2 decimal places (e.g., 87.42%)
+show_missing = true          # Show line numbers of missing coverage
+skip_covered = false         # Show files with 100% coverage
+skip_empty = true            # Skip files with no executable code
+
+# Fail CI if coverage below threshold
+fail_under = 80              # Require 80% coverage minimum
+
+[tool.coverage.html]
+directory = "htmlcov"
+title = "TxGemma-MCP Coverage Report"
+
+[tool.coverage.json]
+output = "coverage.json"
+pretty_print = true
+
+[tool.coverage.xml]
+output = "coverage.xml"
+
+# =========================================================================
+# RUFF CONFIGURATION (Linting & Formatting)
+# =========================================================================
 
 [tool.ruff]
 line-length = 100
 target-version = "py311"
 
+# File/directory exclusions
+exclude = [
+    ".git",
+    ".pytest_cache",
+    "__pycache__",
+    "build",
+    "dist",
+    "*.egg-info",
+]
+
 [tool.ruff.lint]
-select = ["E", "F", "I", "B", "UP"]
-ignore = ["E501"]
+# Enable specific rule categories
+select = [
+    "E",      # pycodestyle errors
+    "F",      # Pyflakes
+    "I",      # isort (import sorting)
+    "B",      # flake8-bugbear
+    "UP",     # pyupgrade
+    "C4",     # flake8-comprehensions
+    "SIM",    # flake8-simplify
+    "RUF",    # Ruff-specific rules
+]
+
+# Ignore specific rules
+ignore = [
+    "E501",   # Line too long (handled by formatter)
+]
+
+# Allow specific violations in specific files
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+    "S101",   # Allow assert statements in tests
+    "ARG",    # Allow unused function arguments (fixtures)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["txgemma"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+# =========================================================================
+# MYPY CONFIGURATION (Optional Type Checking)
+# =========================================================================
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+
+# Ignore missing imports from external packages
+[[tool.mypy.overrides]]
+module = [
+    "transformers.*",
+    "torch.*",
+    "accelerate.*",
+]
+ignore_missing_imports = true

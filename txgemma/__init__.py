@@ -2,35 +2,137 @@
 TxGemma MCP package.
 
 Provides Model Context Protocol tools for TxGemma therapeutic AI models.
-"""
 
-from txgemma.chat_factory import register_chat_tool
-from txgemma.executor import execute_chat, execute_tool
-from txgemma.model import (
-    TxGemmaChatModel,
-    TxGemmaPredictModel,
-    get_chat_model,
-    get_predict_model,
-)
-from txgemma.prompts import PromptLoader, PromptTemplate, get_loader
-from txgemma.tool_factory import build_tools
+Note: Uses lazy imports to avoid loading heavy dependencies (torch)
+during test collection or when only importing validation/config modules.
+"""
 
 __version__ = "0.1.0"
 
+# =============================================================================
+# LAZY IMPORTS
+# =============================================================================
+# Import heavy modules (torch-dependent) only when accessed
+# This prevents PyTorch loading during test collection with --cov
+
+
+def __getattr__(name):
+    """
+    Lazy import handler for expensive imports.
+    
+    Delays importing torch-dependent modules until actually needed.
+    This prevents PyTorch + coverage.py conflicts during test collection.
+    """
+    # Model classes and functions (imports torch)
+    if name in ("TxGemmaPredictModel", "TxGemmaChatModel", "get_predict_model", "get_chat_model"):
+        from txgemma.model import (
+            TxGemmaPredictModel,
+            TxGemmaChatModel,
+            get_predict_model,
+            get_chat_model,
+        )
+        return locals()[name]
+    
+    # Executor functions (imports model which imports torch)
+    if name in ("execute_tool", "execute_tool_async", "execute_chat", "execute_chat_async"):
+        from txgemma.executor import (
+            execute_chat,
+            execute_tool,
+        )
+        # Note: async versions removed in refactoring
+        if name == "execute_chat":
+            return execute_chat
+        elif name == "execute_tool":
+            return execute_tool
+        elif name in ("execute_chat_async", "execute_tool_async"):
+            raise AttributeError(
+                f"'{name}' was removed in refactoring. Use '{name[:-6]}' instead."
+            )
+    
+    # Chat factory (imports executor which imports model)
+    if name == "register_chat_tool":
+        from txgemma.chat_factory import register_chat_tool
+        return register_chat_tool
+    
+    # Tool building (imports prompts and executor)
+    if name == "build_tools":
+        from txgemma.tool_factory import build_tools
+        return build_tools
+    
+    # Prompt modules (lightweight, safe to import eagerly)
+    if name in ("PromptTemplate", "PromptLoader", "get_loader"):
+        from txgemma.prompts import PromptLoader, PromptTemplate, get_loader
+        return locals()[name]
+    
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
+
+
+# =============================================================================
+# EAGER IMPORTS (lightweight modules only)
+# =============================================================================
+# These don't import torch, safe for test collection
+
+# Validation (no torch dependency)
+from txgemma.validation import ValidationError, InputValidator, validate_tool_call
+
+# Config (no torch dependency)  
+from txgemma.config import get_config, reset_config
+
+# Cache utils (no torch dependency)
+from txgemma.cache_utils import (
+    reset_all_caches,
+    reset_parameter_mapping,
+    get_cached_parameter_mapping,
+)
+
+
+# =============================================================================
+# PUBLIC API
+# =============================================================================
+
 __all__ = [
-    # Models
+    # Version
+    "__version__",
+    
+    # Models (lazy)
     "TxGemmaPredictModel",
     "TxGemmaChatModel",
     "get_predict_model",
     "get_chat_model",
-    # Execution
+    
+    # Execution (lazy)
     "execute_tool",
     "execute_chat",
-    # Tool building
+    
+    # Tool building (lazy)
     "build_tools",
     "register_chat_tool",
-    # Prompts
+    
+    # Prompts (lazy)
     "PromptTemplate",
     "PromptLoader",
     "get_loader",
+    
+    # Validation (eager - lightweight)
+    "ValidationError",
+    "InputValidator",
+    "validate_tool_call",
+    
+    # Config (eager - lightweight)
+    "get_config",
+    "reset_config",
+    
+    # Cache (eager - lightweight)
+    "reset_all_caches",
+    "reset_parameter_mapping",
+    "get_cached_parameter_mapping",
 ]
+
+
+# =============================================================================
+# DIR SUPPORT
+# =============================================================================
+
+def __dir__():
+    """Support for dir() to show all available attributes."""
+    return __all__

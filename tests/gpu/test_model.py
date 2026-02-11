@@ -2,23 +2,79 @@
 Tests for txgemma.model module.
 
 These tests require GPU and model download (~5GB for predict, ~18GB for chat).
-Run with: pytest tests/test_model.py --run-gpu
+
+Run with: pytest tests/gpu/test_model.py --run-gpu
+
+Test coverage:
+- Model initialization and configuration
+- Singleton pattern per model class
+- Model loading/unloading
+- Text generation (predict and chat)
+- Device placement
+- Error handling and edge cases
+- Base class functionality
 """
 
 import pytest
 import torch
 
-from txgemma.model import TxGemmaChatModel, TxGemmaPredictModel, get_chat_model, get_predict_model
+from txgemma.model import (
+    TxGemmaModelBase,
+    TxGemmaChatModel,
+    TxGemmaPredictModel,
+    get_chat_model,
+    get_predict_model,
+)
 
 # Mark all tests in this file as requiring GPU
-pytestmark = pytest.mark.gpu
+pytestmark = [pytest.mark.gpu, pytest.mark.model]
 
 
+# =============================================================================
+# BASE CLASS TESTS (Unit)
+# =============================================================================
+
+@pytest.mark.unit
+class TestTxGemmaModelBase:
+    """Test base class functionality."""
+
+    def test_base_class_is_abstract(self):
+        """Test that base class cannot be instantiated directly."""
+        with pytest.raises(TypeError, match="Can't instantiate abstract class"):
+            TxGemmaModelBase()
+
+    def test_singleton_per_subclass(self):
+        """Test that each subclass has its own singleton instance."""
+        # Reset singletons
+        TxGemmaPredictModel._instance = None
+        TxGemmaChatModel._instance = None
+
+        predict1 = TxGemmaPredictModel()
+        chat1 = TxGemmaChatModel()
+
+        # Same instance within class
+        predict2 = TxGemmaPredictModel()
+        assert predict1 is predict2
+
+        chat2 = TxGemmaChatModel()
+        assert chat1 is chat2
+
+        # Different instances across classes
+        assert predict1 is not chat1
+
+
+# =============================================================================
+# PREDICT MODEL - UNIT TESTS
+# =============================================================================
+
+@pytest.mark.unit
 class TestTxGemmaPredictModelUnit:
     """Unit tests for predict model that don't require model loading."""
 
     def setup_method(self):
         """Reset singleton before each test."""
+        # Note: Manual reset needed because model singletons are class-specific
+        # and not covered by reset_all_caches() fixture
         TxGemmaPredictModel._instance = None
 
     def test_init_default(self):
@@ -33,7 +89,9 @@ class TestTxGemmaPredictModelUnit:
 
     def test_init_custom(self):
         """Test model initialization with custom parameters."""
-        model = TxGemmaPredictModel(model_name="google/txgemma-9b-predict", max_new_tokens=128)
+        model = TxGemmaPredictModel(
+            model_name="google/txgemma-9b-predict", max_new_tokens=128
+        )
 
         assert model.model_name == "google/txgemma-9b-predict"
         assert model.max_new_tokens == 128
@@ -58,7 +116,29 @@ class TestTxGemmaPredictModelUnit:
         model = TxGemmaPredictModel()
         assert not model.is_loaded
 
+    def test_configuration_priority_custom_arg(self):
+        """Test that custom arguments override config."""
+        # Custom arg should have highest priority
+        model = TxGemmaPredictModel(model_name="custom-model")
+        assert model.model_name == "custom-model"
 
+    def test_initialization_idempotent(self):
+        """Test that __init__ is idempotent due to singleton."""
+        model1 = TxGemmaPredictModel()
+        original_name = model1.model_name
+
+        # Second call with different args should be ignored
+        model2 = TxGemmaPredictModel(model_name="different-model")
+
+        assert model1 is model2
+        assert model2.model_name == original_name  # Unchanged
+
+
+# =============================================================================
+# CHAT MODEL - UNIT TESTS
+# =============================================================================
+
+@pytest.mark.unit
 class TestTxGemmaChatModelUnit:
     """Unit tests for chat model that don't require model loading."""
 
@@ -71,14 +151,16 @@ class TestTxGemmaChatModelUnit:
         model = TxGemmaChatModel()
 
         assert model.model_name == "google/txgemma-9b-chat"
-        assert model.max_new_tokens == 100
+        assert model.max_new_tokens == 100  # Default from config.py
         assert not model.is_loaded
         assert model.tokenizer is None
         assert model.model is None
 
     def test_init_custom(self):
         """Test model initialization with custom parameters."""
-        model = TxGemmaChatModel(model_name="google/txgemma-27b-chat", max_new_tokens=300)
+        model = TxGemmaChatModel(
+            model_name="google/txgemma-27b-chat", max_new_tokens=300
+        )
 
         assert model.model_name == "google/txgemma-27b-chat"
         assert model.max_new_tokens == 300
@@ -104,12 +186,19 @@ class TestTxGemmaChatModelUnit:
         assert not model.is_loaded
 
 
+# =============================================================================
+# PREDICT MODEL - INTEGRATION TESTS (GPU Required)
+# =============================================================================
+
+@pytest.mark.integration
+@pytest.mark.slow
 class TestTxGemmaPredictModelIntegration:
     """Integration tests for predict model that require GPU."""
 
     @pytest.fixture(scope="class")
     def loaded_model(self):
         """Fixture that loads predict model once for all tests in class."""
+        TxGemmaPredictModel._instance = None
         model = TxGemmaPredictModel()
         model.load()
         yield model
@@ -168,8 +257,18 @@ Answer:"""
         assert len(result) > 0
         assert len(result.strip()) > 0
 
+    def test_load_idempotent(self, loaded_model):
+        """Test that calling load() multiple times is safe."""
+        # Model already loaded via fixture
+        assert loaded_model.is_loaded
+
+        # Should be safe to call again
+        loaded_model.load()
+        assert loaded_model.is_loaded
+
     def test_unload_and_reload(self):
         """Test unloading and reloading predict model."""
+        TxGemmaPredictModel._instance = None
         model = TxGemmaPredictModel()
 
         # Load
@@ -192,12 +291,19 @@ Answer:"""
         model.unload()
 
 
+# =============================================================================
+# CHAT MODEL - INTEGRATION TESTS (GPU Required)
+# =============================================================================
+
+@pytest.mark.integration
+@pytest.mark.slow
 class TestTxGemmaChatModelIntegration:
     """Integration tests for chat model that require GPU."""
 
     @pytest.fixture(scope="class")
     def loaded_chat_model(self):
         """Fixture that loads chat model once for all tests in class."""
+        TxGemmaChatModel._instance = None
         model = TxGemmaChatModel()
         model.load()
         yield model
@@ -246,6 +352,7 @@ class TestTxGemmaChatModelIntegration:
 
     def test_unload_and_reload_chat(self):
         """Test unloading and reloading chat model."""
+        TxGemmaChatModel._instance = None
         model = TxGemmaChatModel()
 
         # Load
@@ -268,6 +375,11 @@ class TestTxGemmaChatModelIntegration:
         model.unload()
 
 
+# =============================================================================
+# PREDICT MODEL - EDGE CASES
+# =============================================================================
+
+@pytest.mark.slow
 class TestPredictModelEdgeCases:
     """Test edge cases and error handling for predict model."""
 
@@ -277,14 +389,18 @@ class TestPredictModelEdgeCases:
 
     def teardown_method(self):
         """Clean up after each test."""
-        if TxGemmaPredictModel._instance and TxGemmaPredictModel._instance.is_loaded:
+        if (
+            TxGemmaPredictModel._instance
+            and TxGemmaPredictModel._instance.is_loaded
+        ):
             TxGemmaPredictModel._instance.unload()
 
     def test_load_invalid_model(self):
         """Test loading with invalid model name."""
         model = TxGemmaPredictModel(model_name="invalid/model-name")
 
-        with pytest.raises(RuntimeError, match="Could not load TxGemma predict model"):
+        # Updated to match new error message format
+        with pytest.raises(RuntimeError, match="Could not load TxGemmaPredictModel"):
             model.load()
 
     def test_generate_empty_prompt(self):
@@ -312,6 +428,11 @@ class TestPredictModelEdgeCases:
             model.unload()
 
 
+# =============================================================================
+# CHAT MODEL - EDGE CASES
+# =============================================================================
+
+@pytest.mark.slow
 class TestChatModelEdgeCases:
     """Test edge cases and error handling for chat model."""
 
@@ -328,7 +449,8 @@ class TestChatModelEdgeCases:
         """Test loading with invalid chat model name."""
         model = TxGemmaChatModel(model_name="invalid/chat-model")
 
-        with pytest.raises(RuntimeError, match="Could not load TxGemma chat model"):
+        # Updated to match new error message format
+        with pytest.raises(RuntimeError, match="Could not load TxGemmaChatModel"):
             model.load()
 
     def test_generate_chat_empty_prompt(self):

@@ -206,6 +206,67 @@ def get_cached_parameter_mapping() -> dict[str, str]:
 # Tool Building
 # -------------------------
 
+def _build_description_from_prompt(tool_name: str, prompt_text: str) -> str:
+    """
+    Build tool description, ending after the Question line.
+    
+    The prompt structure is:
+    - Instructions: ...
+    - Context: ...
+    - Question: ... (may be multi-line for classifications starting with "(A)")
+    - [Parameter lines or Answer: - we exclude these]
+    
+    For classifications, the Question is multi-line:
+      Question: Given a drug SMILES string, predict whether it
+      (A) option 1 (B) option 2
+    
+    For numeric predictions, the Question is single-line:
+      Question: Given a drug SMILES string, predict from 000 to 1000...
+    
+    We include the "(A)..." line if present, otherwise stop after Question line.
+    
+    Args:
+        tool_name: MCP tool name
+        prompt_text: Complete prompt template text
+        
+    Returns:
+        Formatted description ending with the Question (and classification options if present)
+    """
+    formatted_name = tool_name.replace('_', ' ')
+    
+    # Find the Question line
+    question_match = re.search(r'(.*Question:.*?)(\n|$)', prompt_text, re.DOTALL)
+    
+    if not question_match:
+        # No Question found - fallback to full prompt cleaned up
+        cleaned_prompt = prompt_text
+        cleaned_prompt = re.sub(r'\s*Answer:\s*$', '', cleaned_prompt, flags=re.IGNORECASE)
+        return f"**{formatted_name}**\n\n{cleaned_prompt.strip()}"
+    
+    # Get everything up to and including the Question line
+    prompt_until_question = question_match.group(1)
+    
+    # Get the text after the Question line
+    remaining_text = prompt_text[question_match.end():]
+    
+    # Check if the next line starts with "(A)" - if so, it's classification options
+    classification_match = re.match(r'^\s*(\(A\).*?)(\n|$)', remaining_text)
+    
+    if classification_match:
+        # Include the classification line
+        classification_line = classification_match.group(1)
+        cleaned_prompt = f"{prompt_until_question}\n{classification_line}"
+    else:
+        # No classification - just use up to Question line
+        cleaned_prompt = prompt_until_question
+    
+    return f"**{formatted_name}**\n\n{cleaned_prompt.strip()}"
+
+
+# -------------------------
+# Tool Building
+# -------------------------
+
 def build_tool_from_template(
     template: PromptTemplate,
     placeholder_stats: dict[str, int] | None = None,
@@ -215,6 +276,12 @@ def build_tool_from_template(
     
     Uses normalized parameter names (e.g., "drug_smiles") for the schema,
     but preserves original names (e.g., "Drug SMILES") in title for display.
+    
+    The tool description includes the FULL prompt text so users/agents can see:
+    - Instructions
+    - Context (what the metric/task means)
+    - Question format (input/output specification)
+    - Expected answer format (numeric ranges, classification options, etc.)
     """
     properties = {}
     required = []
@@ -239,10 +306,14 @@ def build_tool_from_template(
         
         properties[param_name] = prop_schema
     
+    # Build description from full prompt text
+    # This ensures users/agents see all context, output formats, etc.
+    description = _build_description_from_prompt(template.name, template.template)
+    
     # Create the tool with normalized parameter names
     tool = Tool(
         name=template.name,
-        description=template.get_description(),
+        description=description,
         inputSchema={
             "type": "object",
             "properties": properties,
