@@ -1,8 +1,9 @@
 """
-Input validation for TxGemma MCP server.
+Input validation and security
 
-Validates user inputs to prevent injection attacks, resource exhaustion,
-and other security issues.
+Author: Tobias Neumann
+License: MIT
+Version: 0.1.1
 """
 
 import logging

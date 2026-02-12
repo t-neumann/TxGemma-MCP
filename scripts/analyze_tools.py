@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """
-Analyze available TxGemma tools and explore prompts.
+CLI tool for exploring TxGemma tools
 
+Author: Tobias Neumann
+License: MIT
+Version: 0.1.1
 """
 
 import argparse

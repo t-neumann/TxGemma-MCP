@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-TxGemma MCP Server
+FastMCP server entrypoint
 
-Entry point for the Model Context Protocol server exposing TxGemma tools.
-Uses FastMCP for dual stdio/SSE support.
+Author: Tobias Neumann
+License: MIT
+Version: 0.1.1
 """
 
 import logging

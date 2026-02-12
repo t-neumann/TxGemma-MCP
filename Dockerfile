@@ -1,3 +1,8 @@
+# Dockerfile for TxGemma-MCP
+#Author: Tobias Neumann
+#License: MIT
+#Version: 0.1.1
+
 FROM pytorch/pytorch:2.1.0-cuda12.1-cudnn8-runtime
 
 ENV PYTHONUNBUFFERED=1 \

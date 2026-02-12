@@ -1,7 +1,9 @@
 """
-Global state management improvements for tool_factory.py
+Global state management and caching
 
-This module adds helper functions to manage global caches in a more testable way.
+Author: Tobias Neumann
+License: MIT
+Version: 0.1.1
 """
 
 import logging

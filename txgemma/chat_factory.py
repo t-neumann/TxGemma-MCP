@@ -1,7 +1,9 @@
 """
-Chat tool for TxGemma conversational model.
+Chat tool registration for FastMCP
 
-Registers the chat tool with FastMCP server.
+Author: Tobias Neumann
+License: MIT
+Version: 0.1.1
 """
 
 import logging

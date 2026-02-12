@@ -1,5 +1,9 @@
 """
-Load, validate, and introspect TxGemma / TDC prompt templates.
+TDC prompt loading from HuggingFace
+
+Author: Tobias Neumann
+License: MIT
+Version: 0.1.1
 """
 
 from __future__ import annotations

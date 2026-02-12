@@ -1,5 +1,9 @@
 """
-Dynamically generate MCP tools from TDC prompt templates.
+Dynamic tool generation from TDC prompts
+
+Author: Tobias Neumann
+License: MIT
+Version: 0.1.1
 """
 
 import logging

@@ -1,13 +1,12 @@
 """
-TxGemma MCP package.
+TxGemma-MCP package initialization with lazy loading
 
-Provides Model Context Protocol tools for TxGemma therapeutic AI models.
-
-Note: Uses lazy imports to avoid loading heavy dependencies (torch)
-during test collection or when only importing validation/config modules.
+Author: Tobias Neumann
+License: MIT
+Version: 0.1.1
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 # =============================================================================
 # LAZY IMPORTS

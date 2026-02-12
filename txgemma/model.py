@@ -1,9 +1,9 @@
 """
-TxGemma model wrappers - separate classes for predict and chat models.
+TxGemma model singletons (predict and chat)
 
-Each model type has its own singleton class since they serve different purposes:
-- TxGemmaPredictModel: Fast, deterministic predictions for TDC tasks
-- TxGemmaChatModel: Conversational explanations and Q&A
+Author: Tobias Neumann
+License: MIT
+Version: 0.1.1
 """
 
 import logging

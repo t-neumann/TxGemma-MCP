@@ -1,8 +1,9 @@
 """
-Tool executor for TxGemma MCP server.
+Tool execution with model inference
 
-Executes tool calls by formatting prompts and running them through the model.
-Supports both prediction tools (TDC) and chat queries.
+Author: Tobias Neumann
+License: MIT
+Version: 0.1.1
 """
 
 import logging

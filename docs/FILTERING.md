@@ -1,3 +1,11 @@
+<!--
+TxGemma-MCP Tool Filtering Guide
+Author: Tobias Neumann
+License: MIT
+Version: 0.1.1
+Date: 2026-02-12
+-->
+
 # Tool Filtering Guide
 
 TxGemma-MCP supports flexible tool filtering to create focused tool subsets for specific use cases.

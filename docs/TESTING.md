@@ -1,3 +1,11 @@
+<!--
+TxGemma-MCP Testing Guide
+Author: Tobias Neumann
+License: MIT
+Version: 0.1.1
+Date: 2026-02-12
+-->
+
 # Testing Guide
 
 > **Comprehensive test suite**: 447+ tests | **Coverage**: ~96%

@@ -1,8 +1,9 @@
 """
-Configuration management for TxGemma MCP server.
+Configuration management for TxGemma-MCP
 
-Loads settings from config.yaml with environment variable overrides.
-Priority: Environment variables -> config.yaml -> defaults
+Author: Tobias Neumann
+License: MIT
+Version: 0.1.1
 """
 
 import logging
