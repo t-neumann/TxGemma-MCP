@@ -11,6 +11,7 @@ from pathlib import Path
 from unittest.mock import mock_open, patch
 
 import pytest
+import yaml
 from pydantic import ValidationError
 
 from txgemma.config import (
@@ -30,11 +31,12 @@ pytestmark = [pytest.mark.unit]
 # TEST FIXTURES - Isolated Test Data
 # =============================================================================
 
+
 @pytest.fixture(autouse=True)
 def reset_config_singleton():
     """
     Reset config singleton before and after each test.
-    
+
     Ensures test isolation - each test starts with a clean slate.
     """
     reset_config()
@@ -111,6 +113,7 @@ tools:
 # CONFIG MODEL TESTS
 # =============================================================================
 
+
 class TestConfigModels:
     """Test Pydantic config models."""
 
@@ -171,6 +174,7 @@ class TestConfigModels:
 # FILE LOADING TESTS
 # =============================================================================
 
+
 class TestLoadConfigFromFile:
     """Test loading configuration from YAML file."""
 
@@ -185,9 +189,11 @@ class TestLoadConfigFromFile:
 
     def test_load_minimal_yaml(self, minimal_yaml):
         """Test loading minimal valid YAML."""
-        with patch("builtins.open", mock_open(read_data=minimal_yaml)):
-            with patch("pathlib.Path.exists", return_value=True):
-                config = load_config(Path("test_config.yaml"))
+        with (
+            patch("builtins.open", mock_open(read_data=minimal_yaml)),
+            patch("pathlib.Path.exists", return_value=True),
+        ):
+            config = load_config(Path("test_config.yaml"))
 
         assert config.predict.model == "google/txgemma-2b-predict"
         # Other fields should use defaults
@@ -195,9 +201,11 @@ class TestLoadConfigFromFile:
 
     def test_load_full_yaml(self, full_yaml):
         """Test loading complete YAML configuration."""
-        with patch("builtins.open", mock_open(read_data=full_yaml)):
-            with patch("pathlib.Path.exists", return_value=True):
-                config = load_config(Path("test_config.yaml"))
+        with (
+            patch("builtins.open", mock_open(read_data=full_yaml)),
+            patch("pathlib.Path.exists", return_value=True),
+        ):
+            config = load_config(Path("test_config.yaml"))
 
         assert config.predict.model == "google/txgemma-9b-predict"
         assert config.predict.max_new_tokens == 64
@@ -223,17 +231,21 @@ predict:
     def test_invalid_yaml(self):
         """Test handling of invalid YAML."""
         invalid_yaml = "predict:\n  model: [invalid: yaml"
-        
-        with patch("builtins.open", mock_open(read_data=invalid_yaml)):
-            with patch("pathlib.Path.exists", return_value=True):
-                with pytest.raises(Exception):  # Should raise on invalid YAML
-                    load_config(Path("test_config.yaml"))
+
+        with (
+            patch("builtins.open", mock_open(read_data=invalid_yaml)),
+            patch("pathlib.Path.exists", return_value=True),
+            pytest.raises((ValueError, yaml.YAMLError)),
+        ):
+            load_config(Path("test_config.yaml"))
 
     def test_empty_yaml(self):
         """Test handling of empty YAML file."""
-        with patch("builtins.open", mock_open(read_data="")):
-            with patch("pathlib.Path.exists", return_value=True):
-                config = load_config(Path("test_config.yaml"))
+        with (
+            patch("builtins.open", mock_open(read_data="")),
+            patch("pathlib.Path.exists", return_value=True),
+        ):
+            config = load_config(Path("test_config.yaml"))
 
         # Should use all defaults
         assert config.predict.model == "google/txgemma-2b-predict"
@@ -243,6 +255,7 @@ predict:
 # =============================================================================
 # ENVIRONMENT VARIABLE TESTS
 # =============================================================================
+
 
 class TestEnvironmentVariableOverrides:
     """Test environment variable overrides."""
@@ -283,7 +296,7 @@ class TestEnvironmentVariableOverrides:
             "TXGEMMA_EXCLUDE_COMPLEX": "1",
             "TXGEMMA_ENABLE_CHAT": "0",
         }
-        
+
         with patch.dict(os.environ, env_vars):
             config = load_config(Path("nonexistent.yaml"))
 
@@ -298,11 +311,13 @@ class TestEnvironmentVariableOverrides:
             "TXGEMMA_PREDICT_MODEL": "google/env-model",
             "TXGEMMA_FILTER_PLACEHOLDER": "Protein sequence",
         }
-        
-        with patch.dict(os.environ, env_vars):
-            with patch("builtins.open", mock_open(read_data=production_yaml)):
-                with patch("pathlib.Path.exists", return_value=True):
-                    config = load_config(Path("test_config.yaml"))
+
+        with (
+            patch.dict(os.environ, env_vars),
+            patch("builtins.open", mock_open(read_data=production_yaml)),
+            patch("pathlib.Path.exists", return_value=True),
+        ):
+            config = load_config(Path("test_config.yaml"))
 
         # Environment should win over YAML
         assert config.predict.model == "google/env-model"
@@ -313,18 +328,20 @@ class TestEnvironmentVariableOverrides:
     def test_env_priority_order(self, production_yaml):
         """Test priority: env > yaml > defaults."""
         env_vars = {"TXGEMMA_PREDICT_MODEL": "google/env-model"}
-        
-        with patch.dict(os.environ, env_vars):
-            with patch("builtins.open", mock_open(read_data=production_yaml)):
-                with patch("pathlib.Path.exists", return_value=True):
-                    config = load_config(Path("test_config.yaml"))
+
+        with (
+            patch.dict(os.environ, env_vars),
+            patch("builtins.open", mock_open(read_data=production_yaml)),
+            patch("pathlib.Path.exists", return_value=True),
+        ):
+            config = load_config(Path("test_config.yaml"))
 
         # Env (highest priority)
         assert config.predict.model == "google/env-model"
-        
+
         # YAML (middle priority)
         assert config.chat.max_new_tokens == 200
-        
+
         # Default (lowest priority)
         assert config.tools.max_placeholders is None
 
@@ -332,6 +349,7 @@ class TestEnvironmentVariableOverrides:
 # =============================================================================
 # SINGLETON TESTS
 # =============================================================================
+
 
 class TestGetConfigSingleton:
     """Test get_config singleton behavior."""
@@ -352,9 +370,9 @@ class TestGetConfigSingleton:
     def test_reset_config_clears_singleton(self):
         """Test that reset_config clears the singleton."""
         config1 = get_config()
-        
+
         reset_config()
-        
+
         config2 = get_config()
 
         # Should be different instances
@@ -363,10 +381,10 @@ class TestGetConfigSingleton:
     def test_get_config_reloads_after_reset(self):
         """Test that config reloads after reset."""
         config1 = get_config()
-        initial_model = config1.predict.model
-        
+        _ = config1.predict.model
+
         reset_config()
-        
+
         # Should create new instance
         config2 = get_config()
         assert isinstance(config2, Config)
@@ -375,6 +393,7 @@ class TestGetConfigSingleton:
 # =============================================================================
 # USE CASE TESTS
 # =============================================================================
+
 
 class TestConfigUseCases:
     """Test realistic configuration use cases."""
@@ -392,10 +411,12 @@ tools:
   max_placeholders: 1
   enable_chat: true
 """
-        
-        with patch("builtins.open", mock_open(read_data=dev_yaml)):
-            with patch("pathlib.Path.exists", return_value=True):
-                config = load_config(Path("test_config.yaml"))
+
+        with (
+            patch("builtins.open", mock_open(read_data=dev_yaml)),
+            patch("pathlib.Path.exists", return_value=True),
+        ):
+            config = load_config(Path("test_config.yaml"))
 
         assert config.predict.model == "google/txgemma-2b-predict"
         assert config.tools.max_placeholders == 1
@@ -403,9 +424,11 @@ tools:
 
     def test_production_config(self, production_yaml):
         """Test production configuration preset."""
-        with patch("builtins.open", mock_open(read_data=production_yaml)):
-            with patch("pathlib.Path.exists", return_value=True):
-                config = load_config(Path("test_config.yaml"))
+        with (
+            patch("builtins.open", mock_open(read_data=production_yaml)),
+            patch("pathlib.Path.exists", return_value=True),
+        ):
+            config = load_config(Path("test_config.yaml"))
 
         assert config.predict.model == "google/txgemma-9b-predict"
         assert config.chat.model == "google/txgemma-9b-chat"
@@ -414,9 +437,11 @@ tools:
 
     def test_testing_config(self, test_yaml):
         """Test configuration for testing/CI."""
-        with patch("builtins.open", mock_open(read_data=test_yaml)):
-            with patch("pathlib.Path.exists", return_value=True):
-                config = load_config(Path("test_config.yaml"))
+        with (
+            patch("builtins.open", mock_open(read_data=test_yaml)),
+            patch("pathlib.Path.exists", return_value=True),
+        ):
+            config = load_config(Path("test_config.yaml"))
 
         assert config.predict.model == "google/txgemma-2b-predict"
         assert config.tools.max_placeholders == 1
@@ -433,10 +458,12 @@ tools:
   max_placeholders: 2
   enable_chat: false
 """
-        
-        with patch("builtins.open", mock_open(read_data=custom_yaml)):
-            with patch("pathlib.Path.exists", return_value=True):
-                config = load_config(Path("test_config.yaml"))
+
+        with (
+            patch("builtins.open", mock_open(read_data=custom_yaml)),
+            patch("pathlib.Path.exists", return_value=True),
+        ):
+            config = load_config(Path("test_config.yaml"))
 
         assert config.tools.prompts.filename == "tdc_prompts.json"
         assert config.tools.prompts.local_override == "/app/custom_prompts.json"
@@ -448,6 +475,7 @@ tools:
 # =============================================================================
 # VALIDATION TESTS
 # =============================================================================
+
 
 class TestConfigValidation:
     """Test Pydantic validation."""

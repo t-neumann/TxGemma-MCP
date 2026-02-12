@@ -31,6 +31,7 @@ PLACEHOLDER_REGEX = re.compile(r"\{([^{}]+)\}")
 # PromptTemplate
 # -------------------------
 
+
 class PromptTemplate:
     """
     Represents a single TxGemma / TDC prompt template.
@@ -144,6 +145,7 @@ class PromptTemplate:
 # -------------------------
 # PromptLoader
 # -------------------------
+
 
 class PromptLoader:
     """

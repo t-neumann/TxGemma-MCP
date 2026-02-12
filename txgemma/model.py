@@ -21,29 +21,29 @@ logger = logging.getLogger(__name__)
 class TxGemmaModelBase(ABC):
     """
     Base class for TxGemma models with singleton pattern.
-    
+
     Provides common functionality:
     - Singleton pattern implementation
     - Configuration loading with priority (args → config → defaults)
     - Model loading/unloading
     - Memory management
-    
+
     Subclasses must implement:
     - _get_default_model_name()
     - _get_default_max_tokens()
     - _load_config_values()
     - generate()
     """
-    
+
     _instance: Optional["TxGemmaModelBase"] = None
-    
+
     def __new__(cls, *args, **kwargs):
         """Singleton pattern: only one instance per class."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._initialized = False
         return cls._instance
-    
+
     def __init__(
         self,
         model_name: str | None = None,
@@ -75,7 +75,11 @@ class TxGemmaModelBase(ABC):
         self.max_new_tokens = (
             max_new_tokens
             if max_new_tokens is not None
-            else (config_max_tokens if config_max_tokens is not None else self._get_default_max_tokens())
+            else (
+                config_max_tokens
+                if config_max_tokens is not None
+                else self._get_default_max_tokens()
+            )
         )
 
         self.tokenizer: AutoTokenizer | None = None
@@ -85,27 +89,27 @@ class TxGemmaModelBase(ABC):
         logger.info(
             f"{self.__class__.__name__} configured: {self.model_name}, max_tokens: {self.max_new_tokens}"
         )
-    
+
     @abstractmethod
     def _get_default_model_name(self) -> str:
         """Get default model name for this model type."""
         pass
-    
+
     @abstractmethod
     def _get_default_max_tokens(self) -> int:
         """Get default max tokens for this model type."""
         pass
-    
+
     @abstractmethod
     def _load_config_values(self) -> tuple[str | None, int | None]:
         """
         Load configuration values for this model type.
-        
+
         Returns:
             Tuple of (model_name, max_tokens) from config, or (None, None) if config unavailable
         """
         pass
-    
+
     @property
     def is_loaded(self) -> bool:
         """Check if model is loaded in memory."""
@@ -145,11 +149,11 @@ class TxGemmaModelBase(ABC):
     def generate(self, prompt: str, max_new_tokens: int | None = None) -> str:
         """
         Generate output from the model.
-        
+
         Args:
             prompt: Input prompt
             max_new_tokens: Override default max tokens
-            
+
         Returns:
             Generated text
         """
@@ -165,17 +169,17 @@ class TxGemmaPredictModel(TxGemmaModelBase):
 
     Configuration loaded from config.yaml by default.
     """
-    
+
     _instance: Optional["TxGemmaPredictModel"] = None
-    
+
     def _get_default_model_name(self) -> str:
         """Default prediction model."""
         return "google/txgemma-2b-predict"
-    
+
     def _get_default_max_tokens(self) -> int:
         """Default max tokens for predictions."""
         return 64
-    
+
     def _load_config_values(self) -> tuple[str | None, int | None]:
         """Load prediction model config."""
         try:
@@ -225,17 +229,17 @@ class TxGemmaChatModel(TxGemmaModelBase):
 
     Configuration loaded from config.yaml by default.
     """
-    
+
     _instance: Optional["TxGemmaChatModel"] = None
-    
+
     def _get_default_model_name(self) -> str:
         """Default chat model."""
         return "google/txgemma-9b-chat"
-    
+
     def _get_default_max_tokens(self) -> int:
         """Default max tokens for chat."""
         return 200
-    
+
     def _load_config_values(self) -> tuple[str | None, int | None]:
         """Load chat model config."""
         try:
@@ -285,6 +289,7 @@ class TxGemmaChatModel(TxGemmaModelBase):
         response = self.tokenizer.decode(outputs[0, len(inputs[0]) :], skip_special_tokens=True)
 
         return response.strip()
+
 
 def get_predict_model() -> TxGemmaPredictModel:
     """Get the singleton TxGemmaPredictModel instance."""

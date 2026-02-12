@@ -17,8 +17,8 @@ import pytest
 import torch
 
 from txgemma.model import (
-    TxGemmaModelBase,
     TxGemmaChatModel,
+    TxGemmaModelBase,
     TxGemmaPredictModel,
     get_chat_model,
     get_predict_model,
@@ -31,6 +31,7 @@ pytestmark = [pytest.mark.gpu, pytest.mark.model]
 # =============================================================================
 # BASE CLASS TESTS (Unit)
 # =============================================================================
+
 
 @pytest.mark.unit
 class TestTxGemmaModelBase:
@@ -65,6 +66,7 @@ class TestTxGemmaModelBase:
 # PREDICT MODEL - UNIT TESTS
 # =============================================================================
 
+
 @pytest.mark.unit
 class TestTxGemmaPredictModelUnit:
     """Unit tests for predict model that don't require model loading."""
@@ -87,9 +89,7 @@ class TestTxGemmaPredictModelUnit:
 
     def test_init_custom(self):
         """Test model initialization with custom parameters."""
-        model = TxGemmaPredictModel(
-            model_name="google/txgemma-9b-predict", max_new_tokens=128
-        )
+        model = TxGemmaPredictModel(model_name="google/txgemma-9b-predict", max_new_tokens=128)
 
         assert model.model_name == "google/txgemma-9b-predict"
         assert model.max_new_tokens == 128
@@ -136,6 +136,7 @@ class TestTxGemmaPredictModelUnit:
 # CHAT MODEL - UNIT TESTS
 # =============================================================================
 
+
 @pytest.mark.unit
 class TestTxGemmaChatModelUnit:
     """Unit tests for chat model that don't require model loading."""
@@ -156,9 +157,7 @@ class TestTxGemmaChatModelUnit:
 
     def test_init_custom(self):
         """Test model initialization with custom parameters."""
-        model = TxGemmaChatModel(
-            model_name="google/txgemma-27b-chat", max_new_tokens=300
-        )
+        model = TxGemmaChatModel(model_name="google/txgemma-27b-chat", max_new_tokens=300)
 
         assert model.model_name == "google/txgemma-27b-chat"
         assert model.max_new_tokens == 300
@@ -187,6 +186,7 @@ class TestTxGemmaChatModelUnit:
 # =============================================================================
 # PREDICT MODEL - INTEGRATION TESTS (GPU Required)
 # =============================================================================
+
 
 @pytest.mark.integration
 @pytest.mark.slow
@@ -293,6 +293,7 @@ Answer:"""
 # CHAT MODEL - INTEGRATION TESTS (GPU Required)
 # =============================================================================
 
+
 @pytest.mark.integration
 @pytest.mark.slow
 class TestTxGemmaChatModelIntegration:
@@ -377,6 +378,7 @@ class TestTxGemmaChatModelIntegration:
 # PREDICT MODEL - EDGE CASES
 # =============================================================================
 
+
 @pytest.mark.slow
 class TestPredictModelEdgeCases:
     """Test edge cases and error handling for predict model."""
@@ -387,10 +389,7 @@ class TestPredictModelEdgeCases:
 
     def teardown_method(self):
         """Clean up after each test."""
-        if (
-            TxGemmaPredictModel._instance
-            and TxGemmaPredictModel._instance.is_loaded
-        ):
+        if TxGemmaPredictModel._instance and TxGemmaPredictModel._instance.is_loaded:
             TxGemmaPredictModel._instance.unload()
 
     def test_load_invalid_model(self):
@@ -429,6 +428,7 @@ class TestPredictModelEdgeCases:
 # =============================================================================
 # CHAT MODEL - EDGE CASES
 # =============================================================================
+
 
 @pytest.mark.slow
 class TestChatModelEdgeCases:

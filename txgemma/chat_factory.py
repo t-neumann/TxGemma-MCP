@@ -19,7 +19,7 @@ def register_chat_tool(mcp):
     Args:
         mcp: FastMCP instance
     """
-    
+
     description = """Ask TxGemma Chat model a question about drug discovery, molecular properties, 
 or therapeutic development. The chat model provides detailed explanations and can discuss 
 drug-target interactions, toxicity mechanisms, pharmacokinetics, and more.
@@ -40,8 +40,8 @@ Examples:
     def txgemma_chat(
         question: Annotated[
             str,
-            "Your question about drug discovery, molecular properties, or therapeutic development"
-        ]
+            "Your question about drug discovery, molecular properties, or therapeutic development",
+        ],
     ) -> str:
         """
         Execute TxGemma chat model with a question.
@@ -59,7 +59,7 @@ Examples:
             return execute_chat(question)
         except Exception as e:
             logger.error(f"Chat tool execution failed: {e}")
-            return f"ERROR: {str(e)}"
+            return f"ERROR: {e!s}"
 
     mcp.tool(name="txgemma_chat", description=description)(txgemma_chat)
 

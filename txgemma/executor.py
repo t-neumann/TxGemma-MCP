@@ -6,22 +6,23 @@ Supports both prediction tools (TDC) and chat queries.
 """
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
-from txgemma.model import get_chat_model, get_predict_model, TxGemmaPredictModel, TxGemmaChatModel
-from txgemma.prompts import get_loader, PromptLoader
 from txgemma.cache_utils import get_cached_parameter_mapping
-from txgemma.validation import validate_tool_call, ValidationError
+from txgemma.model import TxGemmaChatModel, TxGemmaPredictModel, get_chat_model, get_predict_model
+from txgemma.prompts import PromptLoader, get_loader
+from txgemma.validation import ValidationError, validate_tool_call
 
 logger = logging.getLogger(__name__)
 
+
 def execute_tool(
-    tool_name: str, 
+    tool_name: str,
     arguments: dict[str, Any],
     # Optional dependencies for testing (normally None)
-    _loader: Optional[PromptLoader] = None,
-    _model: Optional[TxGemmaPredictModel] = None,
-    _param_mapping: Optional[dict[str, str]] = None,
+    _loader: PromptLoader | None = None,
+    _model: TxGemmaPredictModel | None = None,
+    _param_mapping: dict[str, str] | None = None,
 ) -> str:
     """
     Execute a TxGemma tool with the given arguments.
@@ -56,7 +57,7 @@ def execute_tool(
     loader = _loader or get_loader()
     model = _model or get_predict_model()
     param_mapping = _param_mapping or get_cached_parameter_mapping()
-    
+
     # Get the prompt template
     try:
         template = loader.get(tool_name)
@@ -67,12 +68,12 @@ def execute_tool(
     # The MCP client sends us {"drug_smiles": "CCO"}
     # But the prompt template needs {"Drug SMILES": "CCO"}
     original_arguments = {}
-    
+
     for norm_name, value in arguments.items():
         # Get the original placeholder name (e.g., "drug_smiles" -> "Drug SMILES")
         original_name = param_mapping.get(norm_name, norm_name)
         original_arguments[original_name] = value
-        
+
         if norm_name != original_name:
             logger.debug(f"Mapped parameter: {norm_name} -> {original_name}")
 
@@ -100,7 +101,7 @@ def execute_tool(
 def execute_chat(
     question: str,
     # Optional dependency for testing
-    _model: Optional[TxGemmaChatModel] = None,
+    _model: TxGemmaChatModel | None = None,
 ) -> str:
     """
     Execute a chat query with TxGemma chat model.
@@ -120,6 +121,7 @@ def execute_chat(
 
     # Validate question
     from txgemma.validation import InputValidator
+
     try:
         question = InputValidator.validate_string_value(question, "question")
     except ValidationError as e:
@@ -128,7 +130,7 @@ def execute_chat(
 
     # Get model (with optional injection for testing)
     chat_model = _model or get_chat_model()
-    
+
     try:
         logger.info(f"Chat model loaded, is_loaded: {chat_model.is_loaded}")
 

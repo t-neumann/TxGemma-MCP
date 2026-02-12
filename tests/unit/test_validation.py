@@ -24,6 +24,7 @@ pytestmark = [pytest.mark.unit, pytest.mark.security]
 # TOOL NAME VALIDATION
 # =============================================================================
 
+
 class TestValidateToolName:
     """Test tool name validation."""
 
@@ -114,6 +115,7 @@ class TestValidateToolName:
 # PARAMETER NAME VALIDATION
 # =============================================================================
 
+
 class TestValidateParamName:
     """Test parameter name validation."""
 
@@ -194,6 +196,7 @@ class TestValidateParamName:
 # STRING VALUE VALIDATION
 # =============================================================================
 
+
 class TestValidateStringValue:
     """Test string value validation."""
 
@@ -257,6 +260,7 @@ class TestValidateStringValue:
 # =============================================================================
 # ARGUMENTS VALIDATION
 # =============================================================================
+
 
 class TestValidateArguments:
     """Test arguments dictionary validation."""
@@ -347,6 +351,7 @@ class TestValidateArguments:
 # TOOL CALL VALIDATION
 # =============================================================================
 
+
 class TestValidateToolCall:
     """Test complete tool call validation."""
 
@@ -397,6 +402,7 @@ class TestValidateToolCall:
 # CONVENIENCE FUNCTION
 # =============================================================================
 
+
 class TestValidateToolCallFunction:
     """Test the convenience wrapper function."""
 
@@ -415,6 +421,7 @@ class TestValidateToolCallFunction:
 # =============================================================================
 # SECURITY ATTACK VECTORS
 # =============================================================================
+
 
 class TestSecurityAttackVectors:
     """Test protection against real-world attack vectors."""
@@ -508,6 +515,7 @@ class TestSecurityAttackVectors:
 # BOUNDARY TESTS
 # =============================================================================
 
+
 class TestBoundaryConditions:
     """Test boundary conditions and edge cases."""
 
@@ -539,6 +547,7 @@ class TestBoundaryConditions:
 # =============================================================================
 # ERROR MESSAGE TESTS
 # =============================================================================
+
 
 class TestErrorMessages:
     """Test that error messages are informative."""

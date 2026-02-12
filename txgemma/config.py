@@ -40,44 +40,33 @@ class ToolsConfig(BaseModel):
     """Tool loading configuration."""
 
     prompts: PromptsConfig = Field(default_factory=PromptsConfig)
-    
+
     filter_placeholder: str | None = Field(
-        default=None,
-        description="Filter tools by a single placeholder (e.g., 'Drug SMILES')"
+        default=None, description="Filter tools by a single placeholder (e.g., 'Drug SMILES')"
     )
-    
+
     filter_placeholders: list[str] | None = Field(
-        default=None,
-        description="Filter tools by multiple placeholders"
+        default=None, description="Filter tools by multiple placeholders"
     )
-    
+
     match_all: bool = Field(
-        default=True,
-        description="If True, match ALL placeholders; if False, match ANY"
+        default=True, description="If True, match ALL placeholders; if False, match ANY"
     )
     exact_match: bool = Field(
         default=True,
-        description="If True, exact placeholder match; if False, fuzzy substring match"
+        description="If True, exact placeholder match; if False, fuzzy substring match",
     )
-    
-    exclude_complex: bool = Field(
-        default=False,
-        description="Exclude tools with >2 placeholders"
-    )
+
+    exclude_complex: bool = Field(default=False, description="Exclude tools with >2 placeholders")
     max_placeholders: int | None = Field(
-        default=None,
-        description="Maximum number of placeholders per tool"
+        default=None, description="Maximum number of placeholders per tool"
     )
-    
+
     exclude_name_pattern: str | None = Field(
-        default=None,
-        description="Regex pattern to exclude tools by name (e.g., '^ToxCast')"
+        default=None, description="Regex pattern to exclude tools by name (e.g., '^ToxCast')"
     )
-    
-    enable_chat: bool = Field(
-        default=True,
-        description="Enable the TxGemma chat tool"
-    )
+
+    enable_chat: bool = Field(default=True, description="Enable the TxGemma chat tool")
 
 
 class Config(BaseModel):
@@ -91,36 +80,36 @@ class Config(BaseModel):
 def _parse_env_value(value: str, key: str) -> any:
     """
     Parse environment variable value based on expected type.
-    
+
     Args:
         value: Raw string value from environment
         key: Configuration key to determine type
-        
+
     Returns:
         Parsed value (int, bool, str, or None)
     """
     if value.lower() in ["null", "none", ""]:
         return None
-    
+
     if key in ["max_new_tokens", "max_placeholders"]:
         try:
             return int(value)
         except ValueError:
             logger.warning(f"Invalid integer for {key}: {value}")
             return None
-    
+
     if key in ["exact_match", "match_all", "exclude_complex", "enable_chat"]:
         return value.lower() in ["1", "true", "yes", "on"]
-    
+
     return value
 
 
 def _apply_env_overrides(config_dict: dict) -> None:
     """
     Apply environment variable overrides to config dictionary.
-    
+
     Modifies config_dict in place with values from environment variables.
-    
+
     Environment variables:
         TXGEMMA_PREDICT_MODEL: Override predict.model
         TXGEMMA_CHAT_MODEL: Override chat.model
@@ -150,10 +139,10 @@ def _apply_env_overrides(config_dict: dict) -> None:
         if env_var in os.environ:
             raw_value = os.environ[env_var]
             parsed_value = _parse_env_value(raw_value, key)
-            
+
             if section not in config_dict:
                 config_dict[section] = {}
-            
+
             config_dict[section][key] = parsed_value
             logger.info(f"Override from {env_var}: {section}.{key} = {parsed_value}")
 
@@ -172,7 +161,7 @@ def load_config(config_path: Path | None = None) -> Config:
 
     Returns:
         Loaded and validated configuration
-        
+
     Raises:
         Exception: If config file is invalid
     """
@@ -204,14 +193,16 @@ def load_config(config_path: Path | None = None) -> Config:
         logger.error(f"Failed to load configuration: {e}")
         raise
 
+
 _config: Config | None = None
+
 
 def get_config() -> Config:
     """
     Get configuration singleton.
 
     Loads on first call, returns cached instance thereafter.
-    
+
     Returns:
         Loaded configuration instance
     """
@@ -224,7 +215,7 @@ def get_config() -> Config:
 def reset_config() -> None:
     """
     Reset configuration singleton.
-    
+
     Useful for testing where you want to reload configuration
     with different values or environment variables.
     """

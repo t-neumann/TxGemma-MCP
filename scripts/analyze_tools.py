@@ -163,6 +163,7 @@ Examples:
         logging.basicConfig(level=logging.DEBUG)
     else:
         import logging
+
         logging.basicConfig(level=logging.WARNING)
 
     loader = get_loader()
@@ -204,7 +205,7 @@ Examples:
         return
 
     filter_desc_parts = []
-    
+
     if args.placeholder:
         match_type = "fuzzy" if args.fuzzy else "exact"
         filter_desc_parts.append(f"using '{args.placeholder}' ({match_type} match)")
@@ -218,25 +219,25 @@ Examples:
 
     if args.complex:
         filter_desc_parts.append("complex (≥3 placeholders)")
-    
+
     if args.exclude:
         filter_desc_parts.append(f"excluding pattern '{args.exclude}'")
 
     filter_desc = ", ".join(filter_desc_parts) if filter_desc_parts else "all"
 
     build_kwargs = {}
-    
+
     if args.placeholder:
         build_kwargs["filter_placeholder"] = args.placeholder
         build_kwargs["exact_match"] = not args.fuzzy
-    
+
     if args.placeholders:
         build_kwargs["filter_placeholders"] = args.placeholders
         build_kwargs["match_all"] = not args.any
-    
+
     if args.simple:
         build_kwargs["max_placeholders"] = 2
-    
+
     if args.exclude:
         build_kwargs["exclude_name_pattern"] = args.exclude
 
