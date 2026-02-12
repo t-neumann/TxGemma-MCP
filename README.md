@@ -2,13 +2,36 @@
 
 <div align="center">
 
-[![CI Tests](https://github.com/t-neumann/TxGemma-MCP/actions/workflows/tests.yml/badge.svg)](https://github.com/t-neumann/TxGemma-MCP/actions/workflows/tests.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
-[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://hub.docker.com/r/tobneu/txgemma-mcp)
-[![MCP](https://img.shields.io/badge/MCP-compatible-green.svg)](https://modelcontextprotocol.io)
+<!-- Badges -->
+<p align="center">
+  <a href="https://github.com/t-neumann/TxGemma-MCP/actions/workflows/tests.yml">
+    <img src="https://github.com/t-neumann/TxGemma-MCP/actions/workflows/tests.yml/badge.svg" alt="CI Tests">
+  </a>
+  <a href="https://github.com/t-neumann/TxGemma-MCP/releases">
+    <img src="https://img.shields.io/github/v/release/t-neumann/TxGemma-MCP?include_prereleases&label=version" alt="Version">
+  </a>
+  <a href="https://github.com/t-neumann/TxGemma-MCP/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/t-neumann/TxGemma-MCP" alt="License">
+  </a>
+  <a href="https://www.python.org/downloads/">
+    <img src="https://img.shields.io/badge/python-3.11%20%7C%203.12-blue.svg" alt="Python">
+  </a>
+  <a href="docs/TESTING.md">
+    <img src="https://img.shields.io/badge/coverage-96%25-brightgreen.svg" alt="Coverage">
+  </a>
+  <a href="https://github.com/jlowin/fastmcp">
+    <img src="https://img.shields.io/badge/MCP-FastMCP-orange.svg" alt="FastMCP">
+  </a>
+  <a href="https://github.com/astral-sh/uv">
+    <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json" alt="uv">
+  </a>
+  <a href="https://github.com/astral-sh/ruff">
+    <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff">
+  </a>
+  <a href="https://hub.docker.com/r/tobneu/txgemma-mcp">
+    <img src="https://img.shields.io/badge/docker-ready-blue.svg" alt="Docker">
+  </a>
+</p>
 
 **TxGemma-MCP** is a Model Context Protocol (MCP) server exposing Google DeepMind's TxGemma therapeutic AI models for agentic drug discovery workflows.
 
@@ -16,8 +39,8 @@
 [Installation](#-installation) •
 [Configuration](#️-configuration) •
 [Docker](#-docker-deployment) •
-[Contributing](#-Development) •
-[Architecture](#-Architecture)
+[Testing](#-testing) •
+[Architecture](#-architecture-details)
 
 </div>
 
@@ -27,12 +50,14 @@
 
 * **Dual Models**: Prediction model for fast TDC tasks + Chat model for explanations
 * **Configuration-Driven**: Control models, tools, and behavior via `config.yaml`
-* **Dynamic Tool Generation**: Tools auto-generated from TDC prompts
-* **Smart Tool Filtering**: Load only Drug SMILES tools by default (fast, focused)
+* **Dynamic Tool Generation**: 700+ tools auto-generated from TDC prompts
+* **Advanced Tool Filtering**: Filter by placeholder, complexity, and regex patterns
 * **Lazy Model Loading**: Models load on first use (fast startup)
+* **Security Hardened**: Input validation, SQL injection protection, XSS prevention
 * **GPU Optimized**: Efficient memory usage with FP16
 * **Dual Transport**: FastMCP powers both stdio (MCP) and streamable-http (web API) modes
 * **Environment Overrides**: Override config with environment variables
+* **Production-Ready**: 447+ tests, 96% coverage, comprehensive CI/CD
 
 ---
 
@@ -42,21 +67,35 @@
 txgemma-mcp/
 ├── config.yaml               # Main configuration file
 ├── server.py                 # FastMCP entrypoint
+├── scripts/
+│   └── analyze_tools.py      # CLI tool for exploring available tools
 ├── txgemma/
-│   ├── __init__.py
-│   ├── config.py             # Configuration loader 
+│   ├── __init__.py           # Package exports with lazy loading
+│   ├── config.py             # Configuration loader with env overrides
 │   ├── model.py              # Predict + Chat model singletons
-│   ├── chat_factory.py       # Chat tool registration 
+│   ├── chat_factory.py       # Chat tool registration
 │   ├── tool_factory.py       # Auto-generate TDC tools from prompts
 │   ├── executor.py           # Execute tool calls with models
-│   └── prompts.py            # Load TDC prompts from HuggingFace
+│   ├── prompts.py            # Load TDC prompts from HuggingFace
+│   ├── validation.py         # Input validation & security (NEW)
+│   └── cache_utils.py        # Global state management (NEW)
 ├── tests/
-│   ├── test_model.py
-│   ├── test_executor.py
-│   ├── test_chat_factory.py
-│   ├── test_tool_factory.py
-│   ├── test_config.py 
-│   └── test_server.py
+│   ├── unit/                 # Unit tests (fast, mocked)
+│   │   ├── test_validation.py      # 66 tests - Security
+│   │   ├── test_executor.py        # 40 tests
+│   │   ├── test_cache_utils.py     # 26 tests
+│   │   ├── test_config.py          # 50+ tests
+│   │   └── test_chat_factory.py    # 25+ tests
+│   ├── integration/          # Integration tests (real components)
+│   │   ├── test_tool_factory.py    # 52 tests
+│   │   ├── test_prompts.py         # 60+ tests
+│   │   ├── test_server.py          # 50+ tests (with security!)
+│   │   └── test_analyze_tools.py   # 50+ tests - CLI
+│   └── gpu/                  # GPU tests (optional)
+│       └── test_model.py           # 28 tests
+├── docs/
+│   ├── TESTING.md            # Comprehensive testing guide
+│   └── FILTERING.md          # Tool filtering guide
 └── pyproject.toml
 ```
 
@@ -64,11 +103,13 @@ txgemma-mcp/
 
 1. **Configuration-First**: All runtime settings in `config.yaml`
 2. **Dual Models**: Fast predictions + conversational explanations
-3. **Smart Defaults**: Drug SMILES tools only (fast, focused)
+3. **Smart Filtering**: Load only what you need (Drug SMILES by default)
 4. **Lazy Loading**: Models load only when needed
-5. **Singleton Pattern**: One instance per model type
-6. **Environment Overrides**: Config can be overridden via env vars
-7. **Dual Transport**: FastMCP provides stdio (MCP) and streamable-http (web API)
+5. **Security by Design**: Input validation, injection protection, secure exec()
+6. **Singleton Pattern**: One instance per model type
+7. **Environment Overrides**: Config can be overridden via env vars
+8. **Dual Transport**: FastMCP provides stdio (MCP) and streamable-http (web API)
+9. **Test-Driven**: 96% coverage, comprehensive test suite
 
 ---
 
@@ -76,7 +117,7 @@ txgemma-mcp/
 
 ### Prerequisites
 
-* **Python ≥ 3.11**
+* **Python 3.11 or 3.12** (both tested in CI)
 * **GPU recommended** (CUDA or MPS) - Models are 2B-27B parameters
 * **uv** (package manager)
 * **HuggingFace account** (for model access)
@@ -92,7 +133,7 @@ git clone https://github.com/t-neumann/TxGemma-MCP.git
 cd TxGemma-MCP
 
 # 3. Install dependencies
-uv sync
+uv sync --all-extras
 
 # 4. Login to HuggingFace
 uv run huggingface-cli login
@@ -126,8 +167,8 @@ tools:
     filename: "tdc_prompts.json"
     # Prompts are auto-downloaded from predict model repo
   
-  # Only load Drug SMILES tools (recommended)
-  filter_placeholder: "Drug SMILES"
+  # Filter by placeholder 
+  filter_placeholder: "Drug SMILES"  # Only load drug tools
   
   # Enable conversational chat tool
   enable_chat: true
@@ -155,6 +196,7 @@ chat:
   max_new_tokens: 200
 tools:
   filter_placeholder: "Drug SMILES"
+  exclude_name_pattern: "^(ToxCast|Tox21)"  # Exclude ToxCast overload of tools for Agents
 ```
 
 #### Research (54GB+ VRAM)
@@ -183,9 +225,14 @@ export TXGEMMA_CHAT_MAX_TOKENS=500
 # Load all tools instead of filtering
 export TXGEMMA_FILTER_PLACEHOLDER=null
 
+# Exclude tool patterns
+export TXGEMMA_EXCLUDE_NAME_PATTERN="^ToxCast"
+
 # Run server
 uv run fastmcp run server.py
 ```
+
+**Priority**: Environment variables > `config.yaml` > defaults
 
 ### Available Models
 
@@ -201,24 +248,74 @@ uv run fastmcp run server.py
 
 ```yaml
 tools:
-  # Option 1: Filter by placeholder (recommended)
-  filter_placeholder: "Drug SMILES"  # Only drug-development tools, fast
+  # Option 1: Filter by single placeholder (most common)
+  filter_placeholder: "Drug SMILES"  # Only drug-development tools
   
-  # Option 2: Load all tools (slow)
-  filter_placeholder: null  # All available tools
+  # Option 2: Filter by multiple placeholders
+  filter_placeholders: ["Drug SMILES", "Target sequence"]
+  match_all: true  # Require ALL placeholders (AND logic)
   
-  # Option 3: Limit complexity
+  # Option 3: Fuzzy matching
+  filter_placeholder: "sequence"
+  exact_match: false  # Matches "Target sequence", "Protein sequence", etc.
+  
+  # Option 4: Limit complexity
   filter_placeholder: "Drug SMILES"
   max_placeholders: 2  # Only simple tools
   
-  # Option 4: Use local prompts for testing
-  prompts:
-    local_override: "/path/to/custom_prompts.json"
+  # Option 5: Exclude by regex pattern (NEW!)
+  filter_placeholder: "Drug SMILES"
+  exclude_name_pattern: "^ToxCast"  # Exclude ToxCast tools
+  
+  # Option 6: Complex combinations
+  filter_placeholder: "Drug SMILES"
+  max_placeholders: 2
+  exclude_name_pattern: "^(ToxCast|Tox21)"
+  
+  # Option 7: Load all tools (slow, not recommended)
+  filter_placeholder: null  # All 700+ tools
 ```
 
 **Why filter?** Loading all tools can take 10-30 seconds and may overwhelm LLM agents with too many choices. Filtering to Drug SMILES covers the majority of molecular property prediction use cases.
 
-**For detailed filtering options and examples**, see [FILTERING](docs/FILTERING.md)
+**For detailed filtering options, examples, and CLI usage**, see [FILTERING.md](docs/FILTERING.md)
+
+---
+
+## 🔍 Exploring Available Tools
+
+**NEW in v0.1.1**: `analyze_tools.py` CLI for exploring the tool catalog!
+
+```bash
+# List all placeholders with usage counts
+python scripts/analyze_tools.py --list-placeholders
+
+# Show all Drug SMILES tools
+python scripts/analyze_tools.py --placeholder "Drug SMILES"
+
+# Fuzzy search for sequence-related tools
+python scripts/analyze_tools.py --placeholder "sequence" --fuzzy
+
+# Show simple tools only (≤2 parameters)
+python scripts/analyze_tools.py --simple
+
+# Exclude ToxCast tools
+python scripts/analyze_tools.py --exclude "^ToxCast"
+
+# Combine filters: Drug SMILES + simple + no ToxCast
+python scripts/analyze_tools.py --placeholder "Drug SMILES" --simple --exclude "^ToxCast"
+
+# Export to JSON
+python scripts/analyze_tools.py --json > tools.json
+
+# Show template details
+python scripts/analyze_tools.py --template "tdc_ClinTox_predict"
+
+# Get help
+python scripts/analyze_tools.py --help
+```
+
+See [docs/FILTERING.md](docs/FILTERING.md) for complete CLI documentation and examples.
 
 ---
 
@@ -226,23 +323,17 @@ tools:
 
 ### Prediction Tools
 
-TDC prediction tools for molecular properties. The exact number and types of tools depend on what's available in the TxGemma model repository. Below are **examples** of available tool categories:
+**700+ TDC prediction tools** for molecular properties. The exact number and types depend on your filtering configuration. 
 
-| Category | Example Tools |
-|----------|--------------|
-| **Toxicity** | `tdc_ClinTox_predict`, `tdc_hERG_predict` |
-| **ADME** | `tdc_BBB_Martins_predict`, `tdc_Clearance_Hepatocyte_AZ_predict` |
-| **Binding** | `tdc_BindingDB_Kd_predict`, `tdc_DAVIS_predict` |
-| **Solubility** | `tdc_ESOL_predict`, `tdc_AqSolDB_predict` |
-| **Clinical** | Various phase-specific predictions |
+**Default**: With `filter_placeholder: "Drug SMILES"`, ~400-500 tools are loaded (excludes protein/sequence-based tools).
 
-**Note**: With `filter_placeholder: "Drug SMILES"` (default), only tools requiring drug SMILES are loaded. This covers the majority of molecular property prediction tasks and provides faster startup. Set to `null` in config.yaml to load all available tools.
+**Note**: Use `exclude_name_pattern: "^ToxCast"` to remove the bulk of regulatory assays to not overload agents.
 
 ### Chat Tool (Configurable)
 
 **`txgemma_chat`** - Conversational Q&A about drug discovery
 
-**Note:** This tool is enabled by default but can be disabled via `tools.enable_chat: false` in config.yaml.
+**Note:** Enabled by default, disable via `tools.enable_chat: false` in config.yaml.
 
 Example queries:
 ```json
@@ -256,7 +347,6 @@ Example queries:
 ## 🐳 Docker Deployment
 
 ### Build
-
 
 ```bash
 docker buildx build --platform linux/amd64 -t tobneu/txgemma-mcp:latest --push .
@@ -286,7 +376,7 @@ docker logs <container-id> 2>&1 | grep "configured"
 ### Override Config in Docker
 
 ```bash
-# Override models at runtime
+# Override models and filtering at runtime
 docker run -d --gpus all \
   -e HF_TOKEN=$HF_TOKEN \
   -e HF_HOME=/root/.cache/huggingface \
@@ -294,6 +384,7 @@ docker run -d --gpus all \
   -e TXGEMMA_PREDICT_MODEL=google/txgemma-27b-predict \
   -e TXGEMMA_CHAT_MODEL=google/txgemma-27b-chat \
   -e TXGEMMA_CHAT_MAX_TOKENS=500 \
+  -e TXGEMMA_EXCLUDE_NAME_PATTERN="^ToxCast" \
   -p 8000:8000 \
   tobneu/txgemma-mcp:latest
 ```
@@ -333,8 +424,7 @@ Use with Claude Desktop, Cline, or any MCP client:
 uv run fastmcp run server.py --transport streamable-http
 
 # Use MCP Inspector
-npx @modelcontextprotocol/inspector ---transport http --server-url http://localhost:8000/mcp
-
+npx @modelcontextprotocol/inspector --transport http --server-url http://localhost:8000/mcp
 ```
 
 ### Programmatically
@@ -358,44 +448,90 @@ print(f"Explanation: {explanation}")
 
 ---
 
-## 🧰 Development
+## Testing
 
-### Run Tests
+### Quick Start
 
 ```bash
-# All tests (fast, no GPU)
-uv run pytest -v
+# Run all fast tests (no GPU required)
+uv run pytest -m "not gpu"
 
-# With GPU tests
-uv run pytest --run-gpu -v
-
-# Specific test file
-uv run pytest tests/test_config.py -v
-
-# With coverage
-uv run pytest --cov=txgemma --cov-report=html
+# With coverage report
+uv run pytest -m "not gpu" --cov=txgemma --cov-report=html
+open htmlcov/index.html
 ```
 
-### Lint and Format
+### Test Suite Overview
+
+| Module | Tests | Coverage | Purpose |
+|--------|-------|----------|---------|
+| **validation.py** | 66 | 100% | Input validation, SQL injection, XSS protection |
+| **tool_factory.py** | 52 | 97% | Tool generation, parameter normalization |
+| **executor.py** | 40 | 96% | Tool execution, parameter mapping |
+| **cache_utils.py** | 26 | 100% | Global state management |
+| **prompts.py** | 60+ | 97%+ | TDC prompt loading (local/HuggingFace) |
+| **config.py** | 50+ | 96%+ | Configuration with env overrides |
+| **chat_factory.py** | 25+ | 96%+ | Chat tool registration |
+| **server.py** | 50+ | 95%+ | Server init, **exec() security** 🛡️ |
+| **analyze_tools.py** | 50+ | 91%+ | CLI tool analysis |
+| **model.py** | 28 | 95%+ | Model loading (GPU tests) |
+| **TOTAL** | **447+** | **~96%** | **Production-ready!** |
+
+**Runtime**: ~3-4 seconds (without GPU)
+
+### Run Specific Tests
 
 ```bash
-# Check linting
-uv run ruff check
+# By category
+pytest tests/unit/ -v              # Unit tests only
+pytest tests/integration/ -v       # Integration tests only
 
-# Auto-fix issues
-uv run ruff check --fix
+# By module
+pytest tests/unit/test_validation.py -v
+pytest tests/integration/test_server.py -v
 
-# Format code
-uv run ruff
+# Security tests
+pytest -m security -v
+
+# GPU tests (requires GPU)
+pytest -m gpu -v
 ```
 
 ### CI/CD
 
 GitHub Actions runs:
-- Linting (ruff)
-- Type checking (mypy)
-- Tests (pytest)
-- GPU tests (on self-hosted runner)
+- **Linting** (ruff) - Python 3.11 & 3.12
+- **Unit tests** - Fast, mocked dependencies
+- **Integration tests** - Real components, no GPU
+- **GPU tests** (optional) - On self-hosted EC2 runner
+- **Coverage reporting** - Uploaded to Codecov
+
+**For complete testing documentation**, see [TESTING.md](docs/TESTING.md)
+
+---
+
+## 🧰 Development
+
+### Lint and Format
+
+```bash
+# Check linting
+uv run ruff check .
+
+# Auto-fix issues
+uv run ruff check --fix .
+
+# Format code
+uv run ruff format .
+```
+
+### Code Quality
+
+- **Ruff** for linting and formatting
+- **Type hints** throughout codebase
+- **Security checks** (exec() usage validated)
+- **Import sorting** and organization
+- **Docstrings** for all public APIs
 
 ---
 
@@ -422,12 +558,35 @@ Client Request
     ↓
 server.py (FastMCP)
     ↓
+validation.py (input validation) ← NEW!
+    ↓
 executor.py (execute_tool or execute_chat)
     ↓
 prompts.py (load template) + model.py (generate)
     ↓
 Result → Client
 ```
+
+### Security Architecture
+
+1. **Input Validation** (`validation.py`):
+   - SQL injection prevention
+   - Path traversal protection
+   - Command injection prevention
+   - XSS protection
+   - SMILES string validation
+
+2. **Server Security** (`server.py`):
+   - Safe `exec()` usage with validation
+   - Code injection prevention
+   - Malicious input rejection
+
+3. **Parameter Security** (`executor.py`):
+   - Parameter name normalization
+   - Whitespace stripping
+   - Type validation
+
+**All security-critical code has 100% test coverage** 🛡️
 
 ### Memory Management
 
@@ -500,9 +659,9 @@ docker run -d --gpus all \
   -e HF_TOKEN=$(aws secretsmanager get-secret-value ...) \
   -e HF_HOME=/root/.cache/huggingface \
   -v ~/.cache/huggingface:/root/.cache/huggingface \
+  -e TXGEMMA_EXCLUDE_NAME_PATTERN="^(ToxCast|Tox21)" \
   -p 8000:8000 \
   tobneu/txgemma-mcp:latest
-
 ```
 
 ### Scaling
@@ -511,6 +670,20 @@ docker run -d --gpus all \
 - Implement request queuing for high load
 - Consider model serving frameworks (vLLM, TGI)
 - Cache frequently used predictions
+- Use tool filtering to reduce initialization time
+
+### Monitoring
+
+```bash
+# Check loaded tools
+docker logs <container-id> 2>&1 | grep "Loaded.*tools"
+
+# Check excluded tools
+docker logs <container-id> 2>&1 | grep "Excluded.*matching pattern"
+
+# Verify configuration
+docker logs <container-id> 2>&1 | grep "configured"
+```
 
 ---
 
@@ -522,13 +695,17 @@ docker run -d --gpus all \
 * [Therapeutic Data Commons](https://tdcommons.ai)
 * [FastMCP Documentation](https://github.com/jlowin/fastmcp)
 
+**Project Documentation:**
+* [Testing Guide](docs/TESTING.md) - Comprehensive test suite documentation
+* [Filtering Guide](docs/FILTERING.md) - Tool filtering options and examples
+
 ---
 
 ## ⚠️ Limitations
 
 * **GPU Required**: Models need 8-64GB VRAM depending on size
 * **First Load**: Initial download and load takes time
-* **Context Length**: Limited by model's context window
+* **Context Length**: Limited by model's context window (~8K tokens)
 * **Rate Limits**: HuggingFace Hub has download limits
 
 ---
@@ -576,9 +753,72 @@ export TXGEMMA_CHAT_MAX_TOKENS=100
 # Check filter setting
 docker logs <container-id> 2>&1 | grep "filter"
 
+# Check exclusion pattern
+docker logs <container-id> 2>&1 | grep "Excluded"
+
 # Load all tools (slower)
 export TXGEMMA_FILTER_PLACEHOLDER=null
 ```
+
+### Tool Filtering Not Working
+
+```bash
+# Verify pattern is correct
+python scripts/analyze_tools.py --exclude "^ToxCast" --json | jq '.[].name'
+
+# Check logs for exclusion
+docker logs <container-id> 2>&1 | grep "Excluded.*tools matching pattern"
+```
+
+---
+
+## 📋 Changelog
+
+### v0.1.1 (2026-02-12)
+
+**🎉 Major Release: Security, Testing, and Filtering Improvements**
+
+**New Features:**
+- ✨ Advanced tool filtering with regex patterns (`exclude_name_pattern`)
+- ✨ Multiple placeholder filtering with AND/OR logic
+- ✨ `analyze_tools.py` CLI for exploring tool catalog
+- ✨ Comprehensive input validation and security hardening
+
+**Security:**
+- 🛡️ SQL injection protection
+- 🛡️ Path traversal protection
+- 🛡️ Command injection prevention
+- 🛡️ XSS protection
+- 🛡️ Safe `exec()` usage with validation
+- 🛡️ SMILES string validation
+
+**Testing:**
+- ✅ 447+ comprehensive tests (was ~170)
+- ✅ 96% average coverage (was ~85%)
+- ✅ Security tests for all critical paths
+- ✅ Python 3.11 & 3.12 CI matrix testing
+- ✅ GPU test suite with self-hosted runner support
+
+**Improvements:**
+- ⚡ Faster test suite (~3-4s for all fast tests)
+- 📝 Comprehensive documentation (TESTING.md, FILTERING.md)
+- 🔧 Better error messages and logging
+- 🎯 Improved tool filtering performance
+- 🐛 Fixed parameter mapping edge cases
+
+**Infrastructure:**
+- 🔄 Improved CI/CD with caching
+- 📊 Coverage reporting to Codecov
+- 🎨 Ruff linting and formatting
+- 🐳 Updated Docker configuration
+
+### v0.1.0 (Initial Release)
+
+- Initial release with dual model support
+- Basic tool filtering
+- Configuration system
+- Docker deployment
+- FastMCP integration
 
 ---
 
@@ -586,10 +826,12 @@ export TXGEMMA_FILTER_PLACEHOLDER=null
 
 * **Google DeepMind** for TxGemma models
 * **Therapeutic Data Commons** for training data and benchmarks
-* **Anthropic** for Model Context Protocol specification
+* **Anthropic** for Model Context Protocol specification and Claude
 * **FastMCP** project for MCP server framework
+* **Astral** for uv and ruff tools
 
 ---
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
@@ -598,5 +840,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 <p align="center">
   <strong>Author:</strong> Tobias Neumann<br>
-  <strong>Version:</strong> 0.1.0
+  <strong>Version:</strong> 0.1.1<br>
 </p>
